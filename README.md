@@ -5,7 +5,6 @@
 ## Prerequisites
 
 - [Space Engineers](https://store.steampowered.com/app/244850/Space_Engineers/)
-- [Python 3.12](https://python.org) (requires 3.12 or newer)
 - [Pulsar](https://github.com/SpaceGT/Pulsar)
 - [.NET Framework 4.8.1 Developer Pack](https://dotnet.microsoft.com/en-us/download/dotnet-framework/net481) and
   [.NET 10 SDK](https://dotnet.microsoft.com/en-us/download/dotnet/10.0)
@@ -45,8 +44,7 @@ paths there.
 
 To override a path manually, copy the first `PropertyGroup` of `Directory.Build.props` into
 `Directory.Build.props.user`, wrapped into a top-level `<Project>` element, and fill in your
-paths. `setup.py` writes that file for you with the auto-detected install location, creating
-it if needed and keeping any other overrides already in it.
+paths. Keep that file local; it is ignored by Git.
 
 Leaving a path empty (or having no `Directory.Build.props.user` at all) falls back to the
 auto-detection in `Directory.Build.props`, which reads the Steam registry keys on Windows and
@@ -75,15 +73,6 @@ and honours the runtime and platform restrictions declared there.
 `Legacy` data folder when `<Pulsar>/Interim` does not exist, and so does the deployment.
 (`<Pulsar>/Modern` belongs to Space Engineers 2 and is never a deployment target here.)
 
-### Plugin configuration
-
-You can have a nice configuration dialog with little effort in the game client.
-Customize the `Config` class in the `ClientPlugin` project, just follow the examples.
-It supports many different data types, including key binding. Once you have more
-options than can fit on the screen the dialog will have a vertical scrollbar.
-
-![Example config dialog](Docs/ConfigDialogExample.png "Example config dialog")
-
 ### Debugging
 
 - Always use a debug build if you want to set breakpoints and see variable values.
@@ -109,14 +98,6 @@ options than can fit on the screen the dialog will have a vertical scrollbar.
 - Make a copy of the `Legacy` folder as `Interim`, it will have a separate set of everything
   (profiles, `Local` dir). The build then deploys the two target frameworks side by side.
 - Now you can start `Interim.exe` with debugging and debug the binary build of your plugin as usual.
-
-### Accessing internal, protected and private members in game code
-
-Enable the Krafs publicizer to significantly reduce the amount of reflections you need to write.
-
-This can be done by systematically uncommenting the code sections marked with "Uncomment to enable publicizer support".
-Make sure not to miss any of those. List the game assemblies you need to publicize in `GameAssembliesToPublicize.cs`.
-In case of problems read about the [Krafs Publicizer](https://github.com/krafs/Publicizer) or reach out on the [Pulsar](https://discord.gg/z8ZczP2YZY) Discord server.
 
 ### AI assisted plugin development
 
