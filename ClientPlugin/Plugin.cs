@@ -1,4 +1,4 @@
-﻿using System.Reflection;
+using System.Reflection;
 using VRage.Plugins;
 using TetherSE;
 
@@ -23,6 +23,7 @@ public class Plugin : IPlugin
 
     public void Dispose()
     {
+        Tether.Disconnect();
     }
 
     public void Update()

@@ -1,130 +1,80 @@
 # TetherSE
 
-[Server/Client version of the template](https://github.com/viktor-ferenczi/se-server-plugin-template)
+Client-side inventory assistance for Space Engineers / Pulsar. This branch is a
+compliance candidate, not an approved PluginHub release.
 
-## Prerequisites
+## Commands
 
-- [Space Engineers](https://store.steampowered.com/app/244850/Space_Engineers/)
-- [Pulsar](https://github.com/SpaceGT/Pulsar)
-- [.NET Framework 4.8.1 Developer Pack](https://dotnet.microsoft.com/en-us/download/dotnet-framework/net481) and
-  [.NET 10 SDK](https://dotnet.microsoft.com/en-us/download/dotnet/10.0)
+- `/tether`: while holding a tool, target an inventory access port to connect.
+  Selecting another target first disconnects the previous tether, even if the new
+  target is invalid.
+- `/tether off`: disconnect and remove the highlight.
 
-## Development
+## Access and range
 
-1. Set the Space Engineers and Pulsar paths in `Directory.Build.props.user` if automatic detection does not find them.
-2. Open `TetherSE.sln` in Visual Studio or Rider.
-3. Build `Debug`; the plugin is deployed automatically to Pulsar's `Legacy\Local\TetherSE` folder.
-4. Launch Space Engineers through Pulsar's `Legacy.exe`, enable TetherSE, target an inventory block, and type `/tether`.
+The selected block must be personally owned, or explicitly shared with the
+player's faction by an owner in that same faction. The game's HasPlayerAccess
+check must also pass. Unowned, neutral, enemy, and Share All blocks owned by
+someone else are not eligible. Admin access does not override these restrictions.
 
-In case of questions please feel free to ask the SE plugin developer community on the
-[Pulsar](https://discord.gg/z8ZczP2YZY) Discord server in their relevant text channels.
-They also have dedicated channels for plugin ideas, should you look for a new one.
+All tools use the same provisional limits, defined in ClientPlugin/Tether.cs:
 
-_Good luck!_
+- At or below 100 m: request transfers.
+- Above 100 m through 500 m: keep the selection, but pause transfers.
+- Above 500 m: disconnect completely.
 
-## Remarks
+Distances are from the character position to the selected block position.
+Notifications appear on entering/leaving the paused state, not on every update.
+The plugin revalidates the selected block and character every active update and
+immediately before withdrawals and individual deposits. Losing access or the
+character, closing the target, unloading the world, and `/tether off` clear it.
 
-### Plugin version
+No game interaction-distance globals are modified. Transfer requests still go
+through the game's existing server validation. Being inside Tether's range is
+not a guarantee that a server will accept a request. The resumed notification
+means requests are enabled again, not that a transfer has been acknowledged.
 
-The plugin version lives in `Version.Build.props`, which **is** committed and imported by
-`Directory.Build.props`. Keeping the version separate from the local path overrides means it
-is shared by all contributors and stays under version control. Bump the version there.
+## Tools
 
-### Folder path overrides
+- Welder: uses the game's build-planner withdrawal workflow, including its
+  available-inventory/conveyor logic. The selected port is the access anchor.
+- Grinder: deposits all carried ore, ingots, and components, including materials
+  that were already in the character inventory.
+- Drill: deposits all carried ore.
 
-`Directory.Build.props` **is** committed and declares the overridable folder paths with empty
-defaults:
+Transfers are attempted periodically while the corresponding tool is equipped;
+pressing the tool's fire button is not required. Inventory capacity and server
+checks still apply. No server companion is included.
 
-- `Bin64` — the folder containing `SpaceEngineers.exe`
-- `Pulsar` — the Pulsar folder the plugin is deployed into after each build
+## Build without deployment
 
-It optionally imports `Directory.Build.props.user` from the repository root, which is **not
-committed** (matched by `*.user` in `.gitignore`), so each contributor keeps their own local
-paths there.
+From the repository root:
 
-To override a path manually, copy the first `PropertyGroup` of `Directory.Build.props` into
-`Directory.Build.props.user`, wrapped into a top-level `<Project>` element, and fill in your
-paths. Keep that file local; it is ignored by Git.
+```powershell
+dotnet build ClientPlugin/ClientPlugin.csproj -f net48 -p:Bin64="D:\SteamLibrary\steamapps\common\SpaceEngineers\Bin64" -p:RunPostBuildEvent=Never
+```
 
-Leaving a path empty (or having no `Directory.Build.props.user` at all) falls back to the
-auto-detection in `Directory.Build.props`, which reads the Steam registry keys on Windows and
-the usual Steam locations on Linux, then resolves the game through Steam's `libraryfolders.vdf`,
-so installs on a secondary Steam library are found as well. Pulsar defaults to `%AppData%\Pulsar`
-on Windows and `$XDG_CONFIG_HOME/Pulsar` (or `~/.config/Pulsar`) on Linux.
+Use `net10.0` instead for the other project target. Without
+`RunPostBuildEvent=Never`, the project's existing post-build deployment may copy
+the plugin to Pulsar. Building reads the game assemblies; it does not modify them.
 
-The build fails with a clear message if `Bin64` cannot be resolved, and warns instead of failing
-if the Pulsar folder is missing.
+## Multiplayer validation checklist
 
-### Deployment
+Use a non-admin player on a dedicated server, as well as a local test world:
 
-Each successful build copies itself into Pulsar's `Local` plugin folder, so there is nothing to
-run by hand:
+1. Verify connection and transfers for personally owned and faction-shared blocks.
+2. Reject unowned, enemy, neutral, other-player private, and Share All targets.
+3. Revoke sharing, leave the faction, or transfer ownership while tethered; verify
+   disconnection and no subsequent requests.
+4. Test all three tools at 99, 100, 101, 499, 500, and 501 m from the block.
+5. Verify one pause/resume notification per transition and no transfers while paused.
+6. Compare being near the hull of a large ship with being far from the entire grid;
+   server validation may differ. Confirm actual inventory changes on both sides.
+7. Test full destination, empty source, incomplete build planner, and conveyor sources.
+8. Test `/tether off`, invalid replacement selection, death/respawn, target deletion,
+   and leaving/rejoining a world. Confirm no stale selection/highlight.
+9. Verify unrelated `/tetherSomething` messages are not intercepted.
+10. Confirm normal interaction reach remains unchanged before and after all tools.
 
-| Build     | Deployed to                                    |
-|-----------|------------------------------------------------|
-| `net48`   | `<Pulsar>/Legacy/Local/<PluginName>/`          |
-| `net10.0` | `<Pulsar>/Interim/Local/<PluginName>/`         |
-
-The DLL is copied as `plugin.dll`, its symbols as `plugin.pdb` and the PluginHub registration
-XML from the repository root as `plugin.xml`, so Pulsar shows the plugin under its friendly name
-and honours the runtime and platform restrictions declared there.
-
-`Interim` is the Pulsar executable running Space Engineers 1 on .NET 10. It falls back to the
-`Legacy` data folder when `<Pulsar>/Interim` does not exist, and so does the deployment.
-(`<Pulsar>/Modern` belongs to Space Engineers 2 and is never a deployment target here.)
-
-### Debugging
-
-- Always use a debug build if you want to set breakpoints and see variable values.
-- A debug build defines `DEBUG`, so you can add conditional code in `#if DEBUG` blocks.
-- While debugging a specific target unload the other two. It prevents the IDE to be confused.
-- If breakpoints do not "stick" or do not work, then make sure that:
-  - Other projects are unloaded, only the debugged one and Shared are loaded.
-  - Debugger is attached to the running process.
-  - You are debugging the code which is running (no code changes made since the build).
-
-### Building and debugging on .NET 10
-
-- Start the game with the `Interim.exe` Pulsar executable with the `-sources` command line option.
-- Click on the Sources button in Pulsar's dialog, then set up a development folder for your plugin.
-- Make sure to fill in the PluginHub registration XML (`YourPluginName.xml` in this repo) and load that as well.
-- Select `Debug` mode and run `Interim.exe`, then attach the debugger. That should allow debugging your plugin.
-- Select `Release` mode to test exactly how Pulsar will build and run your plugin on the player's machine.
-- The registered development folder shows up as a plugin you can select in the plugin list and save into a profile.
-
-#### Separate .NET 10 DLL build and deployment
-
-- Build your plugin for both `net10.0` and `net48`, which happens by default on Windows.
-- Make a copy of the `Legacy` folder as `Interim`, it will have a separate set of everything
-  (profiles, `Local` dir). The build then deploys the two target frameworks side by side.
-- Now you can start `Interim.exe` with debugging and debug the binary build of your plugin as usual.
-
-### AI assisted plugin development
-
-Please consider using [se-dev-skills](https://github.com/viktor-ferenczi/se-dev-skills/) for better outcomes.
-
-### Troubleshooting
-
-- If the IDE looks confused, then restarting it and the debugged game usually works.
-- If the restart did not work, then try to delete caches used by your IDE and restart.
-- If your build cannot deploy (just runs in a loop), then something locks the DLL file.
-- Look for running game processes (maybe stuck running in the background) and kill them.
-
-### Release
-
-- Always make your final release from a RELEASE build. (More optimized, removes debug code.)
-- Always test your RELEASE build before publishing. Sometimes it behaves differently.
-- In case of client plugins the Pulsar compiles your code, watch out for differences.
-
-### Communication
-
-- In your documentation always include how players or server admins should report bugs.
-- Try to be reachable and respond on a timely manner over your communication channels.
-- Be open for constructive critics.
-
-### Abandoning your project
-
-- Always consider finding a new maintainer, ask around at least once.
-- If you ever abandon the project, then make it clear on its GitHub page.
-- Abandoned projects should be made hidden on PluginHub and Torch's plugin list.
-- Keep the code available on GitHub, so it can be forked and continued by others.
+The 100 m transfer range requires maintainer approval; removing a global override
+alone does not establish compliance with PluginHub's multiplayer-advantage rule.
