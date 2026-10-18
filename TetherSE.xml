@@ -38,7 +38,7 @@
     <Hidden>true</Hidden>
     -->
   <!-- The current plugin version's commit hash -->
-  <Commit>63f294df9f3627e126f237724706533f76270afe</Commit>
+  <Commit>90acb020c9089a2fe2cb4eeba79d58c98c1131d0</Commit>
   <!-- Optional list of alternate versions of the plugin, use it for test or custom builds
     <AlternateVersions>
       <Version>
