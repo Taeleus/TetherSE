@@ -1,11 +1,14 @@
 using System;
+using System.Linq;
 using Sandbox.Game;
+using Sandbox.Game.Entities;
 using Sandbox.Game.Entities.Character;
 using Sandbox.Game.Entities.Inventory;
 using Sandbox.Game.World;
 using Sandbox.ModAPI;
 using VRage.Game;
 using VRage.Game.Entity;
+using VRage.Game.ModAPI;
 using VRage.Utils;
 using VRageMath;
 
@@ -13,117 +16,137 @@ namespace TetherSE;
 
 public static class Tether
 {
+    // Provisional review limits; these never alter game interaction distances.
+    public const double TransferRange = 100.0;
+    public const double DisconnectRange = 500.0;
     private static readonly MyStringHash CharacterInventoryId = MyStringHash.GetOrCompute("Inventory");
+    private static int ticks;
+    private static bool outOfRange;
+    private static MyCharacter linkedCharacter;
+
+    public static bool HasAccess(IMyTerminalBlock block)
+    {
+        var player = MySession.Static?.LocalHumanPlayer;
+        if (player == null || block == null || block.Closed || block.MarkedForClose || !block.HasInventory)
+            return false;
+        var identity = player.Identity.IdentityId;
+        if (identity == 0 || block.OwnerId == 0 || !block.HasPlayerAccess(identity))
+            return false;
+        if (block.OwnerId == identity)
+            return true;
+        var cube = block as MyCubeBlock;
+        if (cube?.IDModule == null || cube.IDModule.ShareMode != MyOwnershipShareModeEnum.Faction)
+            return false;
+        var factions = MyAPIGateway.Session?.Factions;
+        var ours = factions?.TryGetPlayerFaction(identity);
+        var theirs = factions?.TryGetPlayerFaction(block.OwnerId);
+        return ours != null && theirs != null && ours.FactionId == theirs.FactionId;
+    }
+
+    public static void Connected()
+    {
+        linkedCharacter = MySession.Static?.LocalCharacter;
+        ticks = 0;
+        outOfRange = false;
+    }
+
+    public static void Disconnect(string message = null)
+    {
+        GetTargetedBlock.ClearSelection();
+        linkedCharacter = null;
+        outOfRange = false;
+        ticks = 0;
+        if (message != null)
+            MyAPIGateway.Utilities?.ShowNotification(message, 4000, "White");
+    }
+
+    private static bool CanTransfer()
+    {
+        var character = MySession.Static?.LocalCharacter;
+        var block = GetTargetedBlock.selectedBlock;
+        if (block == null) return false;
+        if (character == null || character != linkedCharacter || character.Closed || character.IsDead)
+        {
+            Disconnect("Tether disconnected: character changed or unavailable.");
+            return false;
+        }
+        if (!HasAccess(block))
+        {
+            Disconnect("Tether disconnected: inventory unavailable or access revoked.");
+            return false;
+        }
+        var distance = Vector3D.Distance(character.PositionComp.GetPosition(), block.GetPosition());
+        if (distance > DisconnectRange)
+        {
+            Disconnect($"Tether broke: beyond {DisconnectRange:0} m.");
+            return false;
+        }
+        var paused = distance > TransferRange;
+        if (paused != outOfRange)
+        {
+            outOfRange = paused;
+            MyAPIGateway.Utilities?.ShowNotification(paused
+                ? $"Tether out of transfer range ({TransferRange:0} m). Transfers paused."
+                : "Tether back in range. Transfers resumed.", 4000, "White");
+        }
+        return !paused;
+    }
 
     public static void Update()
     {
-        if (MyAPIGateway.Multiplayer == null || MySession.Static.LocalCharacter == null)
+        if (MySession.Static == null || MyAPIGateway.Session == null)
         {
+            Disconnect();
             return;
         }
-
-        var localPlayer = MySession.Static.LocalCharacter;
-        var utils = MyAPIGateway.Utilities;
-
-        if (ticks < 50)
-        {
-            ticks++;
-            return;
-        }
-
+        if (GetTargetedBlock.selectedBlock == null) return;
+        // Validate every update, even while waiting between transfer batches.
+        if (!CanTransfer()) return;
+        if (++ticks < 51) return;
         ticks = 0;
-
-        if (GetTargetedBlock.selectedBlock == null)
+        var character = MySession.Static.LocalCharacter;
+        var tool = character.HandItemDefinition?.Id.SubtypeName;
+        if (string.IsNullOrEmpty(tool)) return;
+        try
         {
-            return;
-        }
-
-        if (Vector3D.Distance(localPlayer.PositionComp.GetPosition(),
-                GetTargetedBlock.selectedBlock.GetPosition()) > Patches.maxUseDistance)
-        {
-            utils.ShowMessage("Tether Broke!",
-                $"You Moved More Than {Patches.maxUseDistance}m from tethered block.");
-            GetTargetedBlock.selectedBlock = null;
-            GetTargetedBlock.selectedObject = null;
-            return;
-        }
-
-        var equippedTool = MySession.Static.LocalCharacter.HandItemDefinition?.Id.SubtypeName;
-        if (string.IsNullOrEmpty(equippedTool))
-        {
-            return;
-        }
-
-        if (equippedTool.Contains("Welder", StringComparison.OrdinalIgnoreCase))
-        {
-            if (localPlayer.BuildPlanner.Count == 0)
+            if (tool.IndexOf("Welder", StringComparison.OrdinalIgnoreCase) >= 0)
             {
-                return;
+                if (character.BuildPlanner.Count == 0 || !CanTransfer()) return;
+                if (Reflections.Withdraw == null)
+                {
+                    Disconnect("Tether unavailable: game withdrawal method not found.");
+                    return;
+                }
+                Reflections.Withdraw.Invoke(null, new object[] {
+                    (MyEntity)GetTargetedBlock.selectedObject.Owner,
+                    character.GetInventory(CharacterInventoryId), null });
             }
-
-            DoWelder(localPlayer);
-            return;
+            else if (tool.IndexOf("Grinder", StringComparison.OrdinalIgnoreCase) >= 0)
+                Deposit(false);
+            else if (tool.IndexOf("Drill", StringComparison.OrdinalIgnoreCase) >= 0)
+                Deposit(true);
         }
-
-        if (equippedTool.Contains("Grinder", StringComparison.OrdinalIgnoreCase))
+        catch (Exception exception)
         {
-            DoGrinder();
-            return;
-        }
-
-        if (equippedTool.Contains("Drill", StringComparison.OrdinalIgnoreCase))
-        {
-            DoDrill();
+            MyLog.Default.WriteLineAndConsole("TetherSE transfer failed: " + exception);
+            Disconnect("Tether disconnected: transfer failed. See game log.");
         }
     }
 
-    private static void DoWelder(MyCharacter localPlayer)
+    private static void Deposit(bool oreOnly)
     {
-        Patches.UseObjectPatch(Patches.maxUseDistance);
-        Reflections.Withdraw.Invoke(null,
-            new object[] { (MyEntity)GetTargetedBlock.selectedObject.Owner,
-                localPlayer.GetInventory(CharacterInventoryId), null });
-        Patches.UseObjectPatch(5f);
-    }
-
-    private static void DoGrinder()
-    {
-        var inventory = (MyInventory)GetTargetedBlock.selectedBlock.GetInventory();
-        var characterInventory = (MyInventory)MySession.Static.LocalCharacter.GetInventory(CharacterInventoryId);
-        foreach (var item in characterInventory.GetItems())
+        var source = (MyInventory)MySession.Static.LocalCharacter.GetInventory(CharacterInventoryId);
+        // Transfers can mutate the inventory immediately when hosting a world.
+        foreach (var item in source.GetItems().ToArray())
         {
-            var objectId = item.Content.GetObjectId().ToString();
-            if (!objectId.Contains("ore", StringComparison.OrdinalIgnoreCase)
-                && !objectId.Contains("ingot", StringComparison.OrdinalIgnoreCase)
-                && !objectId.Contains("component", StringComparison.OrdinalIgnoreCase))
-            {
-                continue;
-            }
-
-            MyConstants.DEFAULT_INTERACTIVE_DISTANCE = 10000;
-            MyInventory.TransferByPlanner(characterInventory, inventory,
-                item.Content.GetObjectId(), MyItemFlags.None, item.Amount);
-            MyConstants.DEFAULT_INTERACTIVE_DISTANCE = 10;
+            var type = item.Content.GetObjectId().TypeId.ToString();
+            var accepted = type == "MyObjectBuilder_Ore" || (!oreOnly &&
+                (type == "MyObjectBuilder_Ingot" || type == "MyObjectBuilder_Component"));
+            if (!accepted) continue;
+            if (!CanTransfer()) return;
+            var destination = (MyInventory)GetTargetedBlock.selectedBlock.GetInventory();
+            MyInventory.TransferByPlanner(source, destination, item.Content.GetObjectId(),
+                MyItemFlags.None, item.Amount);
         }
     }
-
-    private static void DoDrill()
-    {
-        var inventory = (MyInventory)GetTargetedBlock.selectedBlock.GetInventory();
-        var characterInventory = (MyInventory)MySession.Static.LocalCharacter.GetInventory(CharacterInventoryId);
-        foreach (var item in characterInventory.GetItems())
-        {
-            if (!item.Content.GetObjectId().ToString().Contains("ore", StringComparison.OrdinalIgnoreCase))
-            {
-                continue;
-            }
-
-            MyConstants.DEFAULT_INTERACTIVE_DISTANCE = 10000;
-            MyInventory.TransferByPlanner(characterInventory, inventory,
-                item.Content.GetObjectId(), MyItemFlags.None, item.Amount);
-            MyConstants.DEFAULT_INTERACTIVE_DISTANCE = 10;
-        }
-    }
-
-    private static int ticks;
 }

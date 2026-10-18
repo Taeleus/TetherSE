@@ -1,11 +1,9 @@
 using System.Collections.Generic;
 using Sandbox.Game;
 using Sandbox.Game.Entities;
-using Sandbox.Game.Entities.Cube;
 using Sandbox.Game.EntityComponents;
 using Sandbox.Game.World;
 using Sandbox.ModAPI;
-using VRage.Game;
 using VRage.Game.Components;
 using VRage.Game.Entity;
 using VRage.Game.Entity.UseObject;
@@ -16,53 +14,53 @@ namespace TetherSE;
 
 public static class GetTargetedBlock
 {
+    public static void ClearSelection()
+    {
+        var previous = selectedBlock;
+        selectedBlock = null;
+        selectedObject = null;
+        if (previous != null && !previous.Closed && !previous.MarkedForClose && MySession.Static != null)
+            MyVisualScriptLogicProvider.SetHighlightLocal(previous.Name, -1, 0,
+                Color.White, MySession.Static.LocalPlayerId, null);
+    }
+
     public static void GetPort()
     {
+        Tether.Disconnect();
         var utils = MyAPIGateway.Utilities;
-        var localPlayer = MySession.Static.LocalHumanPlayer;
-        var caster = MyAPIGateway.Session.Player.Character?.EquippedTool?.Components?.Get<MyCasterComponent>();
+        var character = MySession.Static?.LocalCharacter;
+        var caster = character?.EquippedTool?.Components?.Get<MyCasterComponent>();
         var block = caster?.HitBlock;
-
-        if (selectedBlock != null)
+        if (block?.FatBlock is IMyTerminalBlock terminalBlock)
         {
-            MyVisualScriptLogicProvider.SetHighlightLocal(
-                selectedBlock.Name, -1, 0, Color.White, MySession.Static.LocalPlayerId, null);
-        }
-
-        if (block != null && block.FatBlock is IMyTerminalBlock terminalBlock)
-        {
-            var useObjectBase = terminalBlock.Components.Get<MyUseObjectsComponentBase>();
-            var useableObjects = new List<IMyUseObject>();
-            useObjectBase.GetInteractiveObjects(useableObjects);
-            var relation = localPlayer.GetRelationTo(terminalBlock.OwnerId);
-            var owned = relation != MyRelationsBetweenPlayerAndBlock.Enemies
-                && relation != MyRelationsBetweenPlayerAndBlock.Friends;
-
-            if (!owned)
+            if (!Tether.HasAccess(terminalBlock))
             {
-                utils.ShowNotification("You do not own this block... Nice try.", 5000, "Red");
+                utils.ShowNotification("Tether requires your own inventory or an accessible faction-shared inventory.", 5000, "Red");
                 return;
             }
-
-            foreach (var useableObject in useableObjects)
+            if (Vector3D.Distance(character.PositionComp.GetPosition(), terminalBlock.GetPosition()) > Tether.TransferRange)
             {
-                if (useableObject.PrimaryAction != UseActionEnum.OpenInventory)
-                {
-                    continue;
-                }
-
-                utils.ShowNotification($"Tethered to {terminalBlock.CustomName}", 5000, "White");
+                utils.ShowNotification($"Move within {Tether.TransferRange:0} m to connect a tether.", 4000, "White");
+                return;
+            }
+            var objects = terminalBlock.Components.Get<MyUseObjectsComponentBase>();
+            var usableObjects = new List<IMyUseObject>();
+            objects?.GetInteractiveObjects(usableObjects);
+            foreach (var usableObject in usableObjects)
+            {
+                if (usableObject.PrimaryAction != UseActionEnum.OpenInventory) continue;
                 selectedBlock = terminalBlock;
-                selectedObject = useableObject;
+                selectedObject = usableObject;
                 terminalBlock.Name = terminalBlock.EntityId.ToString();
                 MyEntities.SetEntityName((MyEntity)terminalBlock);
-                MyVisualScriptLogicProvider.SetHighlightLocal(
-                    terminalBlock.Name, 2, 3, Color.ForestGreen, MySession.Static.LocalPlayerId, null);
+                MyVisualScriptLogicProvider.SetHighlightLocal(terminalBlock.Name, 2, 3,
+                    Color.ForestGreen, MySession.Static.LocalPlayerId, null);
+                Tether.Connected();
+                utils.ShowNotification($"Tethered to {terminalBlock.CustomName}", 4000, "White");
                 return;
             }
         }
-
-        utils.ShowNotification("Block doesn't exist or does not have a inventory access port.", 5000, "Red");
+        utils?.ShowNotification("Target a block with an inventory access port while holding a tool.", 4000, "Red");
     }
 
     public static IMyUseObject selectedObject;
