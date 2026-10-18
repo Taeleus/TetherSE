@@ -51,12 +51,14 @@ checks still apply. No server companion is included.
 From the repository root:
 
 ```powershell
-dotnet build ClientPlugin/ClientPlugin.csproj -f net48 -p:Bin64="D:\SteamLibrary\steamapps\common\SpaceEngineers\Bin64" -p:RunPostBuildEvent=Never
+dotnet build ClientPlugin/ClientPlugin.csproj -c Release -f net48 -p:Bin64="D:\SteamLibrary\steamapps\common\SpaceEngineers\Bin64" -p:RunPostBuildEvent=Never
 ```
 
-Use `net10.0` instead for the other project target. Without
-`RunPostBuildEvent=Never`, the project's existing post-build deployment may copy
-the plugin to Pulsar. Building reads the game assemblies; it does not modify them.
+Use `net10.0` instead for the other project target. Deployment is disabled by
+default. Set `Pulsar` explicitly in your ignored `Directory.Build.props.user` or
+on the command line only when deployment is intended. `RunPostBuildEvent=Never`
+prevents deployment even with that setting. Building reads the game assemblies;
+it does not modify them.
 
 ## Multiplayer validation checklist
 
@@ -78,3 +80,13 @@ Use a non-admin player on a dedicated server, as well as a local test world:
 
 The 100 m transfer range requires maintainer approval; removing a global override
 alone does not establish compliance with PluginHub's multiplayer-advantage rule.
+
+## Reporting issues
+
+Report bugs at https://github.com/Taeleus/TetherSE/issues with your game/Pulsar
+versions, runtime, reproduction steps, ownership/sharing setup, distance and
+relevant log excerpt. Redact private server details and player identifiers.
+
+For source-based testing, current Pulsar supports development folders via its
+`-sources` option. Test a Release build before publication; an ordinary MSBuild
+success does not verify Pulsar's own source compiler or in-game initialization.

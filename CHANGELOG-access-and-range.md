@@ -56,3 +56,54 @@ not an assertion that the plugin has been accepted into PluginHub.
 
 The PR must remain unmerged until the repository owner approves it. The original
 local plugin and game installation are not modified by this revision's deployment.
+
+## Recheck against current upstream guidance (2026-10-18)
+
+References reviewed:
+- https://github.com/StarCpt/PluginHub (README and SamplePlugin.xml)
+- https://github.com/CometWorks/client-plugin-template (README)
+- https://github.com/CometWorks/skills (plugin development, client development,
+  and plugin-review policy documents)
+
+The automated se-dev-plugin-review workflow supports registry PRs, not this source
+repository PR, so its preparation/posting workflow was not invoked. Its review
+policy was used as reference. No skill package or preparation tools were installed.
+The registry's actual sample supports GUID Id plus RepoId; that authoritative
+schema takes precedence over conflicting owner/repo-ID wording in one skill page.
+
+Additional corrections:
+- Deployment is now opt-in: no automatic Pulsar-directory discovery. The evaluated
+  default Pulsar property is empty. Explicit local path overrides still work.
+- README now documents Release builds, source-loader testing, and bug reports.
+
+Checks performed:
+- Read all five runtime C# files and the PR diff; reflection targets a fixed game
+  type/method. No external input selects code, and no HTTP, process execution,
+  runtime file writes, updates, whitelist, DLC or Pulsar patches were found.
+- Project assembly references resolve under the supplied game Bin64; framework
+  references come from the installed SDK/reference assemblies. No active NuGet,
+  analyzer, COM or project references are added. Publicizer samples remain comments.
+  Unused template game-library references are not shipped assets. This is a path
+  and dependency review, not a cryptographic verification of the Steam install.
+- Reviewed Directory.Build.props, Version.Build.props and the deployment target.
+  No Directory.Build.props.user exists in this checkout. App.config contains
+  framework binding redirects; it is not registered as a loader asset.
+- No committed DLL, executable or native assets, active descriptor packages, or
+  active asset entries. SourceDirectories selects ClientPlugin only.
+- Release builds for net48 and net10.0 passed. A separate net48 Release build with
+  DefineConstants=TRACE and GenerateAssemblyInfo=false passed, exercising the
+  non-LOCAL_BUILD source attributes. This is not Pulsar source-loader validation.
+- Both builds report zero errors/warnings in their summaries; MSBuild additionally
+  prints advisory binding-redirect suggestions for Unsafe and ValueTuple.
+- Evaluated ImplicitUsings=disable and Pulsar empty; git diff --check passed.
+
+Remaining human/runtime checks:
+- No new gameplay changes were made during this recheck. The user's tested dev
+  DLL is still the earlier Debug build; a Release/source-loader in-game run remains
+  unperformed. No installed DLL was replaced during this recheck.
+- The original multiplayer checklist and PluginHub range/fairness decision remain
+  open. A normal build and successful admin-capable test do not settle those gates.
+- No license file is present in the inherited repository. No new license was
+  invented or applied to the original author's code during this review.
+
+The PR remains draft and must not be merged without the owner's approval.
