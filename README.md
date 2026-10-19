@@ -19,6 +19,8 @@ compliance candidate, not an approved PluginHub release.
   corners, so some space inside the orange corners is already beyond break range.
 - /tether bounds off hides the preview. It follows the selected grid as it moves
   and resizes. Previewing does not connect or authorize transfers.
+- Enabled previews hide 30 seconds after a tether disconnects (including /tether off).
+  Reconnecting cancels the countdown; manually hiding remains immediate.
 - Preview clears on death, grid removal, world unload, and plugin disposal.
 - Test enemy arrival/departure, mixed ownership, faction relation changes, and
   reconnection blocking. Confirm highlighting clears when enemies break a tether.

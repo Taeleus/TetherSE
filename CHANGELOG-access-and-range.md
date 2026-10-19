@@ -143,3 +143,14 @@ translated bounds, corners, symmetry, and 100 m / 5 km boundaries. No test C# fi
 were added to plugin sources. Enemy detection, rendering, multiplayer behavior
 and server acceptance still require in-game testing. No performance benchmark.
 Prior test reports above apply to earlier versions, not this implementation.
+
+## Preview refinement (2026-10-18)
+
+User reported successful gameplay testing of the bounds/enemy revision, but
+excessively thick preview lines. Reduced inner/outer width parameters from
+0.05/0.10 to a shared 0.0005, retaining colors and placement.
+Enabled bounds now expire 30 seconds after an actual tether disconnection,
+including manual off. Uses monotonic elapsed time, not frame counts. Reconnection
+cancels expiry; repeated disconnected updates cannot restart it. Explicit preview
+off and lifecycle cleanup still clear immediately. A standalone preview is not
+timed until a connected tether disconnects.

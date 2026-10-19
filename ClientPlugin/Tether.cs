@@ -45,6 +45,7 @@ public static class Tether
 
     public static void Connected()
     {
+        BoundsPreview.TetherConnected();
         linkedCharacter = MySession.Static?.LocalCharacter;
         ticks = 0;
         enemyCheckTicks = 0;
@@ -53,6 +54,7 @@ public static class Tether
 
     public static void Disconnect(string message = null)
     {
+        if (GetTargetedBlock.selectedBlock != null) BoundsPreview.TetherDisconnected();
         GetTargetedBlock.ClearSelection();
         linkedCharacter = null;
         outOfRange = false;

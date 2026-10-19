@@ -1,4 +1,5 @@
 using System;
+using System.Diagnostics;
 using Sandbox.Game.Entities;
 using Sandbox.Game.EntityComponents;
 using Sandbox.Game.World;
@@ -13,7 +14,19 @@ public static class BoundsPreview
 {
     private static MyCubeGrid grid;
 
-    public static void Clear() { grid = null; }
+    private static long hideAt;
+    // The renderer scales this value; keep both boxes at the same thin width.
+    private const float LineWidth = 0.0005f;
+
+    public static void Clear() { grid = null; hideAt = 0; }
+
+    public static void TetherConnected() { hideAt = 0; }
+
+    public static void TetherDisconnected()
+    {
+        if (grid != null)
+            hideAt = Stopwatch.GetTimestamp() + 30L * Stopwatch.Frequency;
+    }
 
     public static void Toggle()
     {
@@ -45,6 +58,11 @@ public static class BoundsPreview
     public static void Draw()
     {
         if (grid == null) return;
+        if (hideAt != 0 && Stopwatch.GetTimestamp() >= hideAt)
+        {
+            Clear();
+            return;
+        }
         if (MyAPIGateway.Session == null || grid.Closed || grid.MarkedForClose ||
             MySession.Static?.LocalCharacter == null || MySession.Static.LocalCharacter.IsDead)
         {
@@ -62,9 +80,9 @@ public static class BoundsPreview
             var orange = Color.Orange;
             var material = MyStringId.GetOrCompute("Square");
             MySimpleObjectDraw.DrawTransparentBox(ref matrix, ref inner, ref green,
-                MySimpleObjectRasterizer.Wireframe, 1, 0.05f, lineMaterial: material);
+                MySimpleObjectRasterizer.Wireframe, 1, LineWidth, lineMaterial: material);
             MySimpleObjectDraw.DrawTransparentBox(ref matrix, ref outer, ref orange,
-                MySimpleObjectRasterizer.Wireframe, 1, 0.10f, lineMaterial: material);
+                MySimpleObjectRasterizer.Wireframe, 1, LineWidth, lineMaterial: material);
         }
         catch (Exception exception)
         {
