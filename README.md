@@ -19,9 +19,9 @@ someone else are not eligible. Admin access does not override these restrictions
 
 All tools use the same provisional limits, defined in ClientPlugin/Tether.cs:
 
-- At or below 100 m: request transfers.
-- Above 100 m through 500 m: keep the selection, but pause transfers.
-- Above 500 m: disconnect completely.
+- At or below 50 m: request transfers.
+- Above 50 m through 200 m: keep the selection, but pause transfers.
+- Above 200 m: disconnect completely.
 
 Distances are from the character position to the selected block position.
 Notifications appear on entering/leaving the paused state, not on every update.
@@ -68,7 +68,7 @@ Use a non-admin player on a dedicated server, as well as a local test world:
 2. Reject unowned, enemy, neutral, other-player private, and Share All targets.
 3. Revoke sharing, leave the faction, or transfer ownership while tethered; verify
    disconnection and no subsequent requests.
-4. Test all three tools at 99, 100, 101, 499, 500, and 501 m from the block.
+4. Test all three tools at 49, 50, 51, 199, 200, and 201 m from the block.
 5. Verify one pause/resume notification per transition and no transfers while paused.
 6. Compare being near the hull of a large ship with being far from the entire grid;
    server validation may differ. Confirm actual inventory changes on both sides.
@@ -78,7 +78,7 @@ Use a non-admin player on a dedicated server, as well as a local test world:
 9. Verify unrelated `/tetherSomething` messages are not intercepted.
 10. Confirm normal interaction reach remains unchanged before and after all tools.
 
-The 100 m transfer range requires maintainer approval; removing a global override
+The 50 m transfer range requires maintainer approval; removing a global override
 alone does not establish compliance with PluginHub's multiplayer-advantage rule.
 
 ## Reporting issues

@@ -17,8 +17,8 @@ namespace TetherSE;
 public static class Tether
 {
     // Provisional review limits; these never alter game interaction distances.
-    public const double TransferRange = 100.0;
-    public const double DisconnectRange = 500.0;
+    public const double TransferRange = 50.0;
+    public const double DisconnectRange = 200.0;
     private static readonly MyStringHash CharacterInventoryId = MyStringHash.GetOrCompute("Inventory");
     private static int ticks;
     private static bool outOfRange;

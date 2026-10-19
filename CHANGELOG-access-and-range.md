@@ -107,3 +107,12 @@ Remaining human/runtime checks:
   invented or applied to the original author's code during this review.
 
 The PR remains draft and must not be merged without the owner's approval.
+
+## Range reduction (2026-10-18)
+
+The new range revision supersedes the 100/500 m limits documented above:
+all tools transfer at or below 50 m, pause above 50 m through 200 m, and
+disconnect above 200 m. Initial tether selection also requires 50 m proximity.
+Notifications use the same constants. README boundary checks and the descriptor
+description now reflect these limits. Prior gameplay test reports above apply
+to the earlier limits; the new boundaries still require in-game testing.
