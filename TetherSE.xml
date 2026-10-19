@@ -11,7 +11,7 @@
   <!-- Optional tooltip for the plugin in the plugin list -->
   <Tooltip>Link a player's tools to a nearby inventory.</Tooltip>
   <!-- Optional plugin description. If omitted, this will be the same as the Tooltip. 1000 characters max. -->
-  <Description>Client-side inventory assistance for owned or explicitly faction-shared inventories. Transfers within 50 m, pauses up to 200 m, then disconnects. Use /tether to connect or /tether off to disconnect. Welding uses the game build planner; grinders deposit ore, ingots and components, and drills deposit ore. No global interaction-distance changes.</Description>
+  <Description>Client-side inventory assistance for owned or faction-shared inventories. Transfers inside the selected grid bounds; pauses outside and disconnects more than 100 m beyond them. Detected enemy-owned blocks on grids within 5 km block tethering (client-visible entities only). /tether connects, /tether off disconnects, /tether bounds toggles a wireframe preview. No global interaction-distance changes.</Description>
   <!-- Only source code in the Directory entries listed in SourceDirectories is compiled. Exclude any test projects or similar. -->
   <SourceDirectories>
     <Directory>ClientPlugin</Directory>

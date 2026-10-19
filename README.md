@@ -10,6 +10,19 @@ compliance candidate, not an approved PluginHub release.
   target is invalid.
 - `/tether off`: disconnect and remove the highlight.
 
+## Bounds preview
+
+- Use /tether bounds while looking at a grid to toggle its wireframes.
+  Tool targeting is preferred; otherwise a camera ray selects a grid within 500 m.
+- Green shows the actual working bounds. Orange shows the box expanded by 100 m
+  on each axis. It is a guide: the true distance boundary is rounded at edges and
+  corners, so some space inside the orange corners is already beyond break range.
+- /tether bounds off hides the preview. It follows the selected grid as it moves
+  and resizes. Previewing does not connect or authorize transfers.
+- Preview clears on death, grid removal, world unload, and plugin disposal.
+- Test enemy arrival/departure, mixed ownership, faction relation changes, and
+  reconnection blocking. Confirm highlighting clears when enemies break a tether.
+- Test the preview on a moving/rotating grid and after leaving/rejoining the world.
 ## Access and range
 
 The selected block must be personally owned, or explicitly shared with the
@@ -17,13 +30,27 @@ player's faction by an owner in that same faction. The game's HasPlayerAccess
 check must also pass. Unowned, neutral, enemy, and Share All blocks owned by
 someone else are not eligible. Admin access does not override these restrictions.
 
-All tools use the same provisional limits, defined in ClientPlugin/Tether.cs:
+All tools use the selected inventory's grid-local bounding box, transformed with
+the grid's rotation and position. Subgrids are not combined into a larger box.
 
-- At or below 50 m: request transfers.
-- Above 50 m through 200 m: keep the selection, but pause transfers.
-- Above 200 m: disconnect completely.
+- Inside/on the box: request transfers.
+- Outside, at most 100 m from the nearest point on the box: pause transfers.
+- More than 100 m outside: break the tether.
+- Detected enemy-owned blocks on a grid within 5 km: break the tether and reject
+  reconnecting. This includes mixed ownership on the tethered grid itself.
 
-Distances are from the character position to the selected block position.
+The character position determines whether it is inside. Enemy proximity uses the
+distance between enclosing world-axis-aligned grid boxes, not grid centers. This
+is conservative: rotated grids can trigger exclusion farther than their true
+oriented-box separation. Relations use the game's Enemies classification;
+unowned blocks are not classified as enemies by this check.
+
+Enemy scans inspect only entities replicated to the client. They cannot prove
+that no enemy exists within 5 km. Checks run on connection, every 30 active
+updates (including paused tethers), and before each transfer batch. At 60 updates
+per second periodic detection can take up to about half a second. Scan failures
+disconnect rather than permitting transfers. There is no server-side component.
+
 Notifications appear on entering/leaving the paused state, not on every update.
 The plugin revalidates the selected block and character every active update and
 immediately before withdrawals and individual deposits. Losing access or the
@@ -68,7 +95,8 @@ Use a non-admin player on a dedicated server, as well as a local test world:
 2. Reject unowned, enemy, neutral, other-player private, and Share All targets.
 3. Revoke sharing, leave the faction, or transfer ownership while tethered; verify
    disconnection and no subsequent requests.
-4. Test all three tools at 49, 50, 51, 199, 200, and 201 m from the block.
+4. Test all three tools inside, on a face, just outside, and 99/100/101 m outside
+   the bounds. Repeat at corners and with a rotated/moving grid.
 5. Verify one pause/resume notification per transition and no transfers while paused.
 6. Compare being near the hull of a large ship with being far from the entire grid;
    server validation may differ. Confirm actual inventory changes on both sides.
@@ -78,7 +106,7 @@ Use a non-admin player on a dedicated server, as well as a local test world:
 9. Verify unrelated `/tetherSomething` messages are not intercepted.
 10. Confirm normal interaction reach remains unchanged before and after all tools.
 
-The 50 m transfer range requires maintainer approval; removing a global override
+The bounding-box/enemy-exclusion policy requires maintainer approval; removing a global override
 alone does not establish compliance with PluginHub's multiplayer-advantage rule.
 
 ## Reporting issues

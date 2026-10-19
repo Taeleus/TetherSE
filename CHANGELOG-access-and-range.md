@@ -116,3 +116,30 @@ disconnect above 200 m. Initial tether selection also requires 50 m proximity.
 Notifications use the same constants. README boundary checks and the descriptor
 description now reflect these limits. Prior gameplay test reports above apply
 to the earlier limits; the new boundaries still require in-game testing.
+
+
+## Bounding-box development revision (2026-10-18)
+
+Supersedes the earlier 50/200 m limits. Uses character distance outside the selected
+grid's oriented local bounds: transfer inside, pause through 100 m outside, break
+beyond 100 m. Separate mechanically connected subgrids do not extend these bounds.
+Existing target ownership/faction sharing and per-request access checks remain.
+
+Enemy detection scans client-visible grids and their owned fat blocks, including
+mixed ownership on the anchor. Uses the game's Enemies relation and conservative
+world-AABB separation <= 5000 m. Scans at connection, every 30 updates while linked,
+and before each transfer batch. An enemy breaks the tether and prevents reconnect;
+scan failure also rejects/disconnects. This cannot detect unreplicated entities.
+No global distance changes or server component were added.
+
+Added /tether bounds and /tether bounds off. Green wireframe is the working box;
+orange is a 100 m expansion along each axis, an enclosing guide rather than the
+exact rounded Euclidean break boundary at corners. Rendering follows grid motion
+and clears on death/unload/disposal. It does not change the tether selection.
+
+Validation: net48 Release build passed. An external harness executed the exact
+geometry methods against VRage.Math with 16 passing assertions for rotated and
+translated bounds, corners, symmetry, and 100 m / 5 km boundaries. No test C# files
+were added to plugin sources. Enemy detection, rendering, multiplayer behavior
+and server acceptance still require in-game testing. No performance benchmark.
+Prior test reports above apply to earlier versions, not this implementation.

@@ -17,8 +17,8 @@ namespace TetherSE;
 public static class Tether
 {
     // Provisional review limits; these never alter game interaction distances.
-    public const double TransferRange = 50.0;
-    public const double DisconnectRange = 200.0;
+    private static int enemyCheckTicks;
+
     private static readonly MyStringHash CharacterInventoryId = MyStringHash.GetOrCompute("Inventory");
     private static int ticks;
     private static bool outOfRange;
@@ -47,6 +47,7 @@ public static class Tether
     {
         linkedCharacter = MySession.Static?.LocalCharacter;
         ticks = 0;
+        enemyCheckTicks = 0;
         outOfRange = false;
     }
 
@@ -56,6 +57,7 @@ public static class Tether
         linkedCharacter = null;
         outOfRange = false;
         ticks = 0;
+        enemyCheckTicks = 0;
         if (message != null)
             MyAPIGateway.Utilities?.ShowNotification(message, 4000, "White");
     }
@@ -75,18 +77,24 @@ public static class Tether
             Disconnect("Tether disconnected: inventory unavailable or access revoked.");
             return false;
         }
-        var distance = Vector3D.Distance(character.PositionComp.GetPosition(), block.GetPosition());
-        if (distance > DisconnectRange)
+        var grid = block.CubeGrid as MyCubeGrid;
+        if (grid == null || grid.Closed || grid.MarkedForClose)
         {
-            Disconnect($"Tether broke: beyond {DisconnectRange:0} m.");
+            Disconnect("Tether disconnected: grid unavailable.");
             return false;
         }
-        var paused = distance > TransferRange;
+        var distance = TetherArea.DistanceOutside(grid, character.PositionComp.GetPosition());
+        if (distance > TetherArea.BreakDistance)
+        {
+            Disconnect("Tether broke: more than 100 m outside the grid bounds.");
+            return false;
+        }
+        var paused = distance > 0;
         if (paused != outOfRange)
         {
             outOfRange = paused;
             MyAPIGateway.Utilities?.ShowNotification(paused
-                ? $"Tether out of transfer range ({TransferRange:0} m). Transfers paused."
+                ? "Outside tethered grid bounds. Transfers paused."
                 : "Tether back in range. Transfers resumed.", 4000, "White");
         }
         return !paused;
@@ -100,10 +108,18 @@ public static class Tether
             return;
         }
         if (GetTargetedBlock.selectedBlock == null) return;
+        // Scan even while paused. Also rescan immediately before a transfer batch.
+        if (++enemyCheckTicks >= 30)
+        {
+            enemyCheckTicks = 0;
+            if (!CheckEnemies()) return;
+        }
         // Validate every update, even while waiting between transfer batches.
         if (!CanTransfer()) return;
         if (++ticks < 51) return;
+        if (!CheckEnemies()) return;
         ticks = 0;
+        enemyCheckTicks = 0;
         var character = MySession.Static.LocalCharacter;
         var tool = character.HandItemDefinition?.Id.SubtypeName;
         if (string.IsNullOrEmpty(tool)) return;
@@ -133,6 +149,13 @@ public static class Tether
         }
     }
 
+    private static bool CheckEnemies()
+    {
+        var grid = GetTargetedBlock.selectedBlock?.CubeGrid as MyCubeGrid;
+        if (TetherArea.CheckEnemies(grid, out var reason)) return true;
+        Disconnect(reason);
+        return false;
+    }
     private static void Deposit(bool oreOnly)
     {
         var source = (MyInventory)MySession.Static.LocalCharacter.GetInventory(CharacterInventoryId);

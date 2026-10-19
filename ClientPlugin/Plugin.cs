@@ -24,6 +24,7 @@ public class Plugin : IPlugin
     public void Dispose()
     {
         Tether.Disconnect();
+        BoundsPreview.Clear();
     }
 
     public void Update()
