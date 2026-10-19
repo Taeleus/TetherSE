@@ -57,8 +57,12 @@ public static class GetTargetedBlock
                 if (usableObject.PrimaryAction != UseActionEnum.OpenInventory) continue;
                 selectedBlock = terminalBlock;
                 selectedObject = usableObject;
-                terminalBlock.Name = terminalBlock.EntityId.ToString();
-                MyEntities.SetEntityName((MyEntity)terminalBlock);
+                // Preserve scenario/visual-script entity names.
+                if (string.IsNullOrEmpty(terminalBlock.Name))
+                {
+                    terminalBlock.Name = terminalBlock.EntityId.ToString();
+                    MyEntities.SetEntityName((MyEntity)terminalBlock);
+                }
                 MyVisualScriptLogicProvider.SetHighlightLocal(terminalBlock.Name, 2, 3,
                     Color.ForestGreen, MySession.Static.LocalPlayerId, null);
                 Tether.Connected();

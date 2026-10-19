@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using Sandbox.Game.Entities;
 using Sandbox.Game.World;
 using VRage.Game;
@@ -53,6 +54,9 @@ public static class TetherArea
                 reason = "Tether unavailable: player or grid unavailable.";
                 return false;
             }
+            // This cache lasts only for this scan. Ownership/sharing and faction
+            // changes are therefore re-evaluated on the next scan as before.
+            var checkedRelations = new Dictionary<long, HashSet<MyOwnershipShareModeEnum>>();
             foreach (var entity in MyEntities.GetEntities())
             {
                 var grid = entity as MyCubeGrid;
@@ -64,6 +68,14 @@ public static class TetherArea
                 foreach (var block in grid.GetFatBlocks())
                 {
                     if (block.Closed || block.MarkedForClose || block.OwnerId == 0) continue;
+                    var module = block.IDModule;
+                    if (module == null) continue;
+                    if (!checkedRelations.TryGetValue(block.OwnerId, out var shareModes))
+                    {
+                        shareModes = new HashSet<MyOwnershipShareModeEnum>();
+                        checkedRelations.Add(block.OwnerId, shareModes);
+                    }
+                    if (!shareModes.Add(module.ShareMode)) continue;
                     if (block.GetUserRelationToOwner(identity) != MyRelationsBetweenPlayerAndBlock.Enemies)
                         continue;
                     reason = "Tether blocked: enemy grid overlaps the tethered grid bounds.";
