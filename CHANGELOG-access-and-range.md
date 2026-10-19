@@ -154,3 +154,16 @@ including manual off. Uses monotonic elapsed time, not frame counts. Reconnectio
 cancels expiry; repeated disconnected updates cannot restart it. Explicit preview
 off and lifecycle cleanup still clear immediately. A standalone preview is not
 timed until a connected tether disconnects.
+
+
+## Description readability and gameplay feedback (2026-10-18)
+
+Replaced the selector tooltip with a short purpose statement. Details now use
+plain-text sections, blank lines and one command per line; XML newline entities
+preserve formatting. Updated repository and local dev metadata, retaining their
+distinct plugin identities. Descriptions remain below 1000 characters.
+No DLL rebuild was needed for this metadata-only change.
+
+User confirmed the thinner wireframes look good, adjust in real time, and the
+30-second disappearance timer works in game. The revised description formatting
+still needs visual confirmation in Pulsar.
