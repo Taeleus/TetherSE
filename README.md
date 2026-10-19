@@ -72,7 +72,7 @@ From the repository root, build the Legacy version with your game's Bin64 path:
 dotnet build ClientPlugin/ClientPlugin.csproj -c Release -f net48 -p:Bin64="D:\SteamLibrary\steamapps\common\SpaceEngineers\Bin64" -p:RunPostBuildEvent=Never
 ```
 
-The output is `ClientPlugin/bin/Release/net48/TetherSE.dll`. The project also contains a `net10.0` target; the current plugin descriptor selects the Legacy runtime.
+The output is `ClientPlugin/bin/Release/net48/TetherSE.dll`. The project also contains a `net10.0` target; the current plugin descriptor selects the Legacy runtime using the CLR identifier.
 
 Automatic deployment is disabled by default. Local paths can be configured in the ignored `Directory.Build.props.user` file. `RunPostBuildEvent=Never` keeps deployment disabled even when a Pulsar path is configured.
 

@@ -28,8 +28,8 @@
       <Id>viktor-ferenczi/se-performance-improvements</Id>
     </DependencyIds> 
     -->
-  <!-- Optional tag that restricts the plugin to specific runtimes (case sensitive: NETFramework, NETCoreApp). List multiple, comma separated. If omitted, the runtime is detected from the compiled assembly.
-    <Runtimes>NETFramework,NETCoreApp</Runtimes>
+  <!-- Optional tag that restricts the plugin to specific runtimes (case sensitive: CLR, CoreCLR, Mono). List multiple, comma separated. If omitted, no explicit runtime restriction is applied.
+    <Runtimes>CLR,CoreCLR</Runtimes>
     -->
   <!-- Optional tag that restricts the plugin to specific platforms (case sensitive: Windows, Linux). List multiple, comma separated. If omitted, the plugin loads on all platforms.
     <Platforms>Windows,Linux</Platforms>
@@ -53,5 +53,5 @@
     <Asset Name="RemoteReference" Url="https://example.com/AssemblyFileName.dll" Sha256="..." FileName="CustomName.dll" Reference="true"/>
     -->
   <!-- Feel free to delete the comments and the commented out optional blocks once you're done. -->
-  <Runtimes>NETFramework</Runtimes>
+  <Runtimes>CLR</Runtimes>
 </PluginData>
