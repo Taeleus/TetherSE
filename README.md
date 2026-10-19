@@ -37,13 +37,13 @@ The working area is the bounding box of the grid containing your selected invent
 
 Distance is measured from your character to the nearest point on the box, not from the selected inventory or the grid's center. Returning inside resumes a paused tether automatically. After a break, use `/tether` to connect again.
 
-## Ownership and nearby enemies
+## Ownership and enemy overlap
 
 The selected inventory must be personally owned or explicitly shared with your faction by an owner in that faction. Normal inventory-access permissions must also allow access. Unowned blocks and another player's blocks set only to Share All are not eligible. Admin access does not bypass these requirements.
 
 Access is checked during operation and before transfers. Losing permission disconnects the tether.
 
-Detected enemy-owned blocks on grids within **5 km** of the tethered grid's enclosing bounds break the tether and prevent reconnection while that condition remains. This includes enemy-owned blocks on mixed-ownership grids. Enemy status follows the game's ownership and faction relations. The proximity check uses enclosing grid boxes rather than grid centers.
+An enemy grid whose bounding box overlaps the tethered grid's bounding box breaks the tether and prevents reconnection while the overlap remains. Both boxes follow their grids' rotation and position. Nearby enemies outside the bounds do not block tethering. This also applies to overlapping mixed-ownership grids containing enemy-owned blocks, including the tethered grid itself. Enemy status follows the game's ownership and faction relations.
 
 ## Wireframe preview
 

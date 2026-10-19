@@ -167,3 +167,17 @@ No DLL rebuild was needed for this metadata-only change.
 User confirmed the thinner wireframes look good, adjust in real time, and the
 30-second disappearance timer works in game. The revised description formatting
 still needs visual confirmation in Pulsar.
+
+
+## Enemy overlap revision (2026-10-19)
+
+Replaced the 5 km exclusion with intersection of the two grids' oriented bounding
+boxes. The 5 km enclosing-AABB distance is only a candidate filter; being nearby
+does not itself block transfers. Mixed ownership and the tethered grid itself
+remain checked. Touching bounds count as intersection. Existing access checks,
+scan cadence, transfer bounds and 100 m disconnect buffer are unchanged.
+Updated README and both repository/local dev XML descriptions.
+
+Validation: net48 Release build passed; 12 oriented-overlap checks passed using
+the exact method and game math library (including touching and rotated boxes).
+Installed TetherSEDev DLL hash verified. User confirmed the new behavior works in game.
