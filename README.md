@@ -1,6 +1,6 @@
 # TetherSE
 
-TetherSE links your hand tools to an owned or faction-shared inventory in Space Engineers. Welders pull components from the linked inventory, while grinders and drills send materials back.
+TetherSE links your hand tools to an owned or faction-shared inventory in Space Engineers. Welders pull components from its accessible conveyor network, while grinders and drills send materials back to the selected inventory.
 
 Built for **Pulsar Legacy (.NET Framework 4.8)**. No companion server mod is required.
 
@@ -39,9 +39,11 @@ Distance is measured from your character to the nearest point on the box, not fr
 
 ## Ownership and enemy overlap
 
-The selected inventory must be personally owned or explicitly shared with your faction by an owner in that faction. Normal inventory-access permissions must also allow access. Unowned blocks and another player's blocks set only to Share All are not eligible. Admin access does not bypass these requirements.
+The selected inventory must be personally owned or explicitly shared with your faction by an owner in that faction. Normal inventory-access permissions must also allow access. Unowned blocks and another player's blocks set only to Share All are not eligible as tether targets. Admin access does not bypass these requirements.
 
-Access is checked during operation and before transfers. Losing permission disconnects the tether.
+Access to the tether target is checked during operation and before transfers. Losing permission disconnects the tether.
+
+**Welder sources follow vanilla conveyor access.** The ownership restriction above applies to the selected tether target, not every inventory supplying components. The build planner can withdraw from conveyor-connected inventories across connector-docked grids when normal game access and conveyor rules allow it. These sources may include unowned inventories or another player's Share All inventories. This preserves the vanilla withdrawal behavior available at the inventory port. Grinder and drill deposits go to the selected inventory.
 
 An enemy grid whose bounding box overlaps the tethered grid's bounding box breaks the tether and prevents reconnection while the overlap remains. Both boxes follow their grids' rotation and position. Nearby enemies outside the bounds do not block tethering. This also applies to overlapping mixed-ownership grids containing enemy-owned blocks, including the tethered grid itself. Enemy status follows the game's ownership and faction relations.
 
