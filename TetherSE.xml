@@ -9,9 +9,9 @@
   <!-- The author name that you want to appear in the plugin list -->
   <Author>Taeleus</Author>
   <!-- Optional tooltip for the plugin in the plugin list -->
-  <Tooltip>Link a player's tools to a nearby inventory.</Tooltip>
+  <Tooltip>Link your welder, grinder and drill to an owned or faction-shared inventory.</Tooltip>
   <!-- Optional plugin description. If omitted, this will be the same as the Tooltip. 1000 characters max. -->
-  <Description>Client-side inventory assistance for owned or explicitly faction-shared inventories. Transfers within 100 m, pauses up to 500 m, then disconnects. Use /tether to connect or /tether off to disconnect. Welding uses the game build planner; grinders deposit ore, ingots and components, and drills deposit ore. No global interaction-distance changes.</Description>
+  <Description>Link your hand tools to an owned or faction-shared inventory.&#10;Welders pull components; grinders and drills send materials back.&#10;&#10;RANGE&#10;Work inside the tethered grid&apos;s bounds.&#10;Outside: transfers pause.&#10;More than 100 m outside: the tether disconnects.&#10;Detected enemies within 5 km also disconnect it.&#10;&#10;COMMANDS&#10;/tether - target an inventory port with a tool to connect&#10;/tether off - disconnect&#10;/tether bounds - toggle wireframe bounds&#10;/tether bounds off - hide wireframes&#10;&#10;WIREFRAMES&#10;Green: working area.&#10;Orange: 100 m break-range guide. The actual boundary has rounded corners, so the box extends slightly beyond it at the corners.&#10;Bounds hide 30 seconds after disconnection.</Description>
   <!-- Only source code in the Directory entries listed in SourceDirectories is compiled. Exclude any test projects or similar. -->
   <SourceDirectories>
     <Directory>ClientPlugin</Directory>
@@ -38,12 +38,12 @@
     <Hidden>true</Hidden>
     -->
   <!-- The current plugin version's commit hash -->
-  <Commit>ada8e335ceb5aa83c3b51f55515906aa5ea4852a</Commit>
+  <Commit>dd924c3d7611340830c5925fa898b9b8bebe5393</Commit>
   <!-- Optional list of alternate versions of the plugin, use it for test or custom builds
     <AlternateVersions>
       <Version>
         <Name>Version Name</Name>
-        <Commit>Commit hash</Commit>
+        <Commit>dd924c3d7611340830c5925fa898b9b8bebe5393</Commit>
       </Version>
     </AlternateVersions> 
     -->

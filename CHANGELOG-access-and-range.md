@@ -107,3 +107,63 @@ Remaining human/runtime checks:
   invented or applied to the original author's code during this review.
 
 The PR remains draft and must not be merged without the owner's approval.
+
+## Range reduction (2026-10-18)
+
+The new range revision supersedes the 100/500 m limits documented above:
+all tools transfer at or below 50 m, pause above 50 m through 200 m, and
+disconnect above 200 m. Initial tether selection also requires 50 m proximity.
+Notifications use the same constants. README boundary checks and the descriptor
+description now reflect these limits. Prior gameplay test reports above apply
+to the earlier limits; the new boundaries still require in-game testing.
+
+
+## Bounding-box development revision (2026-10-18)
+
+Supersedes the earlier 50/200 m limits. Uses character distance outside the selected
+grid's oriented local bounds: transfer inside, pause through 100 m outside, break
+beyond 100 m. Separate mechanically connected subgrids do not extend these bounds.
+Existing target ownership/faction sharing and per-request access checks remain.
+
+Enemy detection scans client-visible grids and their owned fat blocks, including
+mixed ownership on the anchor. Uses the game's Enemies relation and conservative
+world-AABB separation <= 5000 m. Scans at connection, every 30 updates while linked,
+and before each transfer batch. An enemy breaks the tether and prevents reconnect;
+scan failure also rejects/disconnects. This cannot detect unreplicated entities.
+No global distance changes or server component were added.
+
+Added /tether bounds and /tether bounds off. Green wireframe is the working box;
+orange is a 100 m expansion along each axis, an enclosing guide rather than the
+exact rounded Euclidean break boundary at corners. Rendering follows grid motion
+and clears on death/unload/disposal. It does not change the tether selection.
+
+Validation: net48 Release build passed. An external harness executed the exact
+geometry methods against VRage.Math with 16 passing assertions for rotated and
+translated bounds, corners, symmetry, and 100 m / 5 km boundaries. No test C# files
+were added to plugin sources. Enemy detection, rendering, multiplayer behavior
+and server acceptance still require in-game testing. No performance benchmark.
+Prior test reports above apply to earlier versions, not this implementation.
+
+## Preview refinement (2026-10-18)
+
+User reported successful gameplay testing of the bounds/enemy revision, but
+excessively thick preview lines. Reduced inner/outer width parameters from
+0.05/0.10 to a shared 0.0005, retaining colors and placement.
+Enabled bounds now expire 30 seconds after an actual tether disconnection,
+including manual off. Uses monotonic elapsed time, not frame counts. Reconnection
+cancels expiry; repeated disconnected updates cannot restart it. Explicit preview
+off and lifecycle cleanup still clear immediately. A standalone preview is not
+timed until a connected tether disconnects.
+
+
+## Description readability and gameplay feedback (2026-10-18)
+
+Replaced the selector tooltip with a short purpose statement. Details now use
+plain-text sections, blank lines and one command per line; XML newline entities
+preserve formatting. Updated repository and local dev metadata, retaining their
+distinct plugin identities. Descriptions remain below 1000 characters.
+No DLL rebuild was needed for this metadata-only change.
+
+User confirmed the thinner wireframes look good, adjust in real time, and the
+30-second disappearance timer works in game. The revised description formatting
+still needs visual confirmation in Pulsar.

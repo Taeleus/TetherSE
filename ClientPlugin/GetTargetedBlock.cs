@@ -38,9 +38,15 @@ public static class GetTargetedBlock
                 utils.ShowNotification("Tether requires your own inventory or an accessible faction-shared inventory.", 5000, "Red");
                 return;
             }
-            if (Vector3D.Distance(character.PositionComp.GetPosition(), terminalBlock.GetPosition()) > Tether.TransferRange)
+            var grid = terminalBlock.CubeGrid as MyCubeGrid;
+            if (grid == null || TetherArea.DistanceOutside(grid, character.PositionComp.GetPosition()) > TetherArea.BreakDistance)
             {
-                utils.ShowNotification($"Move within {Tether.TransferRange:0} m to connect a tether.", 4000, "White");
+                utils.ShowNotification("Move within 100 m of the grid bounds to connect.", 4000, "White");
+                return;
+            }
+            if (!TetherArea.CheckEnemies(grid, out var reason))
+            {
+                utils.ShowNotification(reason, 5000, "Red");
                 return;
             }
             var objects = terminalBlock.Components.Get<MyUseObjectsComponentBase>();
