@@ -11,6 +11,15 @@ namespace TetherSE;
 // Only inspects entities replicated to this client; not server-authoritative.
 public static class TetherArea
 {
+    private static readonly Dictionary<MyCubeGrid, GridOwnershipCache> ownershipCaches =
+        new Dictionary<MyCubeGrid, GridOwnershipCache>();
+
+    public static void ClearCache()
+    {
+        foreach (var cache in ownershipCaches.Values) cache.Dispose();
+        ownershipCaches.Clear();
+    }
+
     public const double BreakDistance = 100.0;
     public const double EnemyScanDistance = 5000.0;
 
@@ -46,6 +55,7 @@ public static class TetherArea
     public static bool CheckEnemies(MyCubeGrid anchor, out string reason)
     {
         reason = null;
+        var seen = new HashSet<MyCubeGrid>();
         try
         {
             var identity = MySession.Static?.LocalHumanPlayer?.Identity?.IdentityId ?? 0;
@@ -64,8 +74,14 @@ public static class TetherArea
                 if (BoundsDistance(anchor.PositionComp.WorldAABB, grid.PositionComp.WorldAABB) > EnemyScanDistance)
                     continue;
                 if (!BoundsOverlap(anchor, grid)) continue;
+                seen.Add(grid);
+                if (!ownershipCaches.TryGetValue(grid, out var cache))
+                {
+                    cache = new GridOwnershipCache(grid);
+                    ownershipCaches.Add(grid, cache);
+                }
                 // Include the anchor itself: enemy-owned blocks on mixed grids count.
-                foreach (var block in grid.GetFatBlocks())
+                foreach (var block in cache.Candidates())
                 {
                     if (block.Closed || block.MarkedForClose || block.OwnerId == 0) continue;
                     var module = block.IDModule;
@@ -89,6 +105,22 @@ public static class TetherArea
             MyLog.Default.WriteLineAndConsole("TetherSE enemy check failed: " + exception);
             reason = "Tether disconnected: enemy check failed. See game log.";
             return false;
+        }
+        finally
+        {
+            if (reason != null)
+                ClearCache();
+            else
+            {
+                var stale = new List<MyCubeGrid>();
+                foreach (var grid in ownershipCaches.Keys)
+                    if (!seen.Contains(grid)) stale.Add(grid);
+                foreach (var grid in stale)
+                {
+                    ownershipCaches[grid].Dispose();
+                    ownershipCaches.Remove(grid);
+                }
+            }
         }
     }
 }

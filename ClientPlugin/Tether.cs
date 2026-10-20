@@ -55,6 +55,7 @@ public static class Tether
     public static void Disconnect(string message = null)
     {
         if (GetTargetedBlock.selectedBlock != null) BoundsPreview.TetherDisconnected();
+        TetherArea.ClearCache();
         GetTargetedBlock.ClearSelection();
         linkedCharacter = null;
         outOfRange = false;
