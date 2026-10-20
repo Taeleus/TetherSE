@@ -181,3 +181,29 @@ Updated README and both repository/local dev XML descriptions.
 Validation: net48 Release build passed; 12 oriented-overlap checks passed using
 the exact method and game math library (including touching and rotated boxes).
 Installed TetherSEDev DLL hash verified. User confirmed the new behavior works in game.
+
+
+## Event-driven ownership grouping experiment (2026-10-19)
+
+Branch perf/enemy-grid-cache caches representative terminal blocks for each
+owner/sharing combination between scans. Grid block additions/removals, grid
+ownership notifications and each terminal block's OwnershipChanged event mark
+the grouping dirty. Unowned terminal blocks are subscribed too. Nonterminal
+blocks without that immediate notification remain individually checked.
+
+Faction/identity relation results are never cached: representatives are evaluated
+against the current player every scan. Entity enumeration, oriented overlap checks,
+scan cadence, access checks, transfer behavior and range rules remain unchanged.
+Caches are removed when grids stop overlapping and cleared on disconnect (also
+covering session unload/disposal). All handlers are detached when entries expire.
+The game IL was inspected to confirm sharing changes call terminal ownership
+notifications. Rebuild happens on the next scan rather than inside event callbacks.
+
+Validation: net48 Release build passed. A stubbed-game harness running the actual
+TetherArea and GridOwnershipCache sources passed 10,124 assertions including
+ownership changes on non-representative blocks, sharing-only changes, formerly
+unowned blocks, faction changes without ownership events, add/remove, nonterminal
+fallback, moving grids and subscription cleanup. In a synthetic 10,000-block /
+100-scan scenario, GetFatBlocks was called once and relations 100 times. These are
+operation counts, not an in-game timing or server performance benchmark.
+User confirmed successful local in-game testing on 2026-10-19. The tested cache revision is now being merged into master and submitted through the updated PluginHub source pin.
