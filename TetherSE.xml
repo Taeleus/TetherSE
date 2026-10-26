@@ -17,7 +17,7 @@
   <Tooltip>Link your welder, grinder and drill to an owned or faction-shared inventory.</Tooltip>
 
   <!-- Optional plugin description. If omitted, this will be the same as the Tooltip. 1000 characters max. -->
-  <Description>Connect your welder, grinder or drill to an owned or faction-shared inventory. Welders pull build-planner components through normal conveyor access; grinders and drills send materials back.&#10;&#10;Transfers work inside the selected grid&apos;s bounds, pause outside, and break more than 100 m beyond them. Enemy grids overlapping the bounds also block tethering.&#10;&#10;Ship damage, weapon fire and supported EMP/jump-inhibition effects cause a two-minute cooldown across mechanical and docked grids. Player bump damage and your own grinding do not count. An isolated connector hit is tolerated; repeated damage or destruction still counts. Newly observed grids and WeaponCore weapons need two minutes of observation. Cooldowns survive reconnects.&#10;&#10;Supports vanilla weapons, WeaponCore and optional Vanilla+ effects. No server mod required.&#10;&#10;/tether - connect&#10;/tether off - disconnect&#10;/tether bounds - toggle bounds&#10;/tether bounds off - hide bounds</Description>
+  <Description>Connect tools to an owned or faction-shared inventory. Ownership rules apply to the selected port. Welders use vanilla conveyor access, including docked grids and unowned or Share All sources when normal permissions allow. Grinders and drills deposit into the target.&#10;&#10;Transfers work inside grid bounds, pause outside, and break more than 100 m beyond them. Overlapping enemy grids block tethering.&#10;&#10;Ship damage, weapon fire and supported EMP/jump inhibition trigger a two-minute cooldown across mechanical and docked grids. Player bump damage and own grinding do not count. Isolated connector hits are tolerated; repeated damage or destruction still counts. New grids and WeaponCore weapons need observation. Cooldowns survive reconnects.&#10;&#10;No server mod required. Supports vanilla weapons and optional WeaponCore/Vanilla+.&#10;&#10;/tether - connect&#10;/tether off - disconnect&#10;/tether bounds - toggle bounds&#10;/tether bounds off - hide bounds</Description>
 
   <!-- Only source code in the Directory entries listed in SourceDirectories is compiled. Exclude any test projects or similar. -->
   <SourceDirectories>
@@ -26,8 +26,5 @@
 
   <!-- The current plugin version's commit hash -->
   <Commit>1ac30a6d49b69992b5383159f0b5119a094614b2</Commit>
-  <NuGetReferences>
-    <PackageReference Include="Lib.Harmony" Version="2.4.2" />
-  </NuGetReferences>
   <Runtimes>CLR</Runtimes>
 </PluginData>

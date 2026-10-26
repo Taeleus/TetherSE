@@ -37,6 +37,10 @@ No changes yet.
 - Public feedback is `Tether unavailable.` with no diagnostic chat or countdown;
   detailed reasons remain in the game log. Existing enemy-overlap checks remain.
 - The README focuses on getting started, commands, access, range and combat rules.
+- The README and launcher description explicitly retain vanilla conveyor sources,
+  including accessible unowned/Share All inventories; ownership restricts the target.
+- The launcher uses Pulsar's built-in Harmony. The package reference remains only
+  for local compilation and tests.
 
 ### Validation
 - Both plugin targets build successfully; 268 regression assertions pass.

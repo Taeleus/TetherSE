@@ -46,7 +46,7 @@ Bounds previews require more than half of the grid's ownable blocks to belong to
 
 Your selected inventory must be personally owned or explicitly faction-shared by a member of your faction. Unowned inventories, enemy inventories, and another player's inventories set only to **Share All** cannot be selected. Losing access disconnects the tether.
 
-Welder withdrawals follow the game's normal inventory permissions and conveyor rules, including across locked connectors. Tether does not grant access to locked cargo. Grinder and drill deposits go to the selected inventory.
+The ownership rule applies to the selected port. Welders can pull from accessible conveyor-connected inventories, including docked grids and unowned or Share All inventories when the game's normal permissions allow it. Tether does not grant access to locked cargo. Grinder and drill deposits go to the selected inventory.
 
 An enemy grid overlapping the working bounds blocks tethering. Enemy-owned blocks on a mixed-ownership grid can also block it. Nearby enemies outside the bounds do not trigger this check.
 
