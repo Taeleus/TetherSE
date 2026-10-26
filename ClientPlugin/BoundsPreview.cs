@@ -13,12 +13,13 @@ namespace TetherSE;
 public static class BoundsPreview
 {
     private static MyCubeGrid grid;
+    private static BoundsAccess access;
 
     private static long hideAt;
     // The renderer scales this value; keep both boxes at the same thin width.
     private const float LineWidth = 0.0005f;
 
-    public static void Clear() { grid = null; hideAt = 0; }
+    public static void Clear() { access?.Dispose(); access = null; grid = null; hideAt = 0; }
 
     public static void TetherConnected() { hideAt = 0; }
 
@@ -50,6 +51,22 @@ public static class BoundsPreview
             MyAPIGateway.Utilities?.ShowNotification("Look at a grid within 500 m (or target it with a tool).", 4000, "White");
             return;
         }
+        try
+        {
+            access = new BoundsAccess(grid);
+            if (!access.IsAllowed())
+            {
+                Clear();
+                MyAPIGateway.Utilities?.ShowNotification("Tether bounds unavailable.", 3000, "White");
+                return;
+            }
+        }
+        catch (Exception exception)
+        {
+            Clear();
+            MyLog.Default.WriteLineAndConsole("TetherSE bounds access check failed: " + exception);
+            return;
+        }
         MyAPIGateway.Utilities?.ShowNotification(
             "Green: working bounds. Orange: +100 m box guide; corners extend beyond actual break boundary.",
             8000, "White");
@@ -71,6 +88,11 @@ public static class BoundsPreview
         }
         try
         {
+            if (access == null || !access.IsAllowed())
+            {
+                Clear();
+                return;
+            }
             var matrix = grid.WorldMatrix;
             var local = grid.PositionComp.LocalAABB;
             var inner = new BoundingBoxD(local.Min, local.Max);

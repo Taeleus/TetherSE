@@ -29,6 +29,15 @@ internal sealed class GridOwnershipCache : IDisposable
 
     public IEnumerable<MyCubeBlock> Candidates()
     {
+        // MarkForClose can precede a structural removal event. A dead group
+        // representative must not hide other live blocks with the same owner.
+        if (!dirty)
+            foreach (var block in representatives)
+                if (block.Closed || block.MarkedForClose)
+                {
+                    dirty = true;
+                    break;
+                }
         if (dirty) Rebuild();
         foreach (var block in representatives) yield return block;
         // Non-terminal blocks do not expose the same immediate ownership event.
