@@ -62,14 +62,24 @@ public static class Tether
         ticks = 0;
         enemyCheckTicks = 0;
         if (message != null)
-            MyAPIGateway.Utilities?.ShowNotification(message, 4000, "White");
+            TetherDiagnostics.Show(message);
     }
 
+    private static void DisconnectForCombat()
+    {
+        Disconnect();
+        CombatLockout.ReportBlocked();
+    }
     private static bool CanTransfer()
     {
         var character = MySession.Static?.LocalCharacter;
         var block = GetTargetedBlock.selectedBlock;
         if (block == null) return false;
+        if (CombatLockout.IsBlocked)
+        {
+            DisconnectForCombat();
+            return false;
+        }
         if (character == null || character != linkedCharacter || character.Closed || character.IsDead)
         {
             Disconnect("Tether disconnected: character changed or unavailable.");
@@ -110,7 +120,13 @@ public static class Tether
             Disconnect();
             return;
         }
+        CombatLockout.Update();
         if (GetTargetedBlock.selectedBlock == null) return;
+        if (CombatLockout.IsBlocked)
+        {
+            DisconnectForCombat();
+            return;
+        }
         // Scan even while paused. Also rescan immediately before a transfer batch.
         if (++enemyCheckTicks >= 30)
         {

@@ -1,85 +1,80 @@
 # TetherSE
 
-TetherSE links your hand tools to an owned or faction-shared inventory in Space Engineers. Welders pull components from its accessible conveyor network, while grinders and drills send materials back to the selected inventory.
+Connect your welder, grinder, or drill to an owned or faction-shared inventory in Space Engineers.
 
-Built for **Pulsar Legacy (.NET Framework 4.8)**. No companion server mod is required.
+- **Welders** pull components requested in your build planner through the inventory's accessible conveyor network.
+- **Grinders and drills** send materials from your character back to the selected inventory.
+
+Requires **Pulsar Legacy**. No server mod is required.
 
 ## Getting started
 
-1. Equip a welder, grinder, or drill.
-2. Aim at a block with an inventory access port that you own or can access through faction sharing.
-3. Type `/tether` in chat to connect.
-4. Work inside that grid's bounding box. Use `/tether bounds` to see the working area.
-5. Type `/tether off` when you want to disconnect.
+1. Enable **TetherSE** in Pulsar and start the game.
+2. Equip a welder, grinder, or drill.
+3. Aim at an inventory access port you own, or one explicitly shared with your faction.
+4. Type `/tether` in chat.
+5. Work inside the selected grid's bounds. Use `/tether bounds` to show the working area.
 
-For welding, add the components you need to the game's build planner. Transfers run periodically while the corresponding tool is equipped; you do not need to hold the fire button.
+For welding, add the blocks or components you need to the game's build planner. Transfers run periodically while the appropriate tool is equipped; you do not need to hold the fire button.
 
 ## Commands
 
 | Command | Action |
 | --- | --- |
 | `/tether` | Connect to the inventory port you are targeting with a tool. |
-| `/tether off` | Disconnect and remove the inventory highlight. |
-| `/tether bounds` | Toggle wireframe bounds for the grid you are looking at. |
-| `/tether bounds off` | Hide the wireframe preview. |
+| `/tether off` | Disconnect. |
+| `/tether bounds` | Show or hide the targeted grid's bounds. |
+| `/tether bounds off` | Hide the bounds preview. |
 
-Selecting another tether target disconnects the previous one, even if the new target is invalid. Showing bounds does not connect a tether.
+Selecting another target disconnects the previous one, even if the new target is unavailable. Showing bounds does not connect a tether.
 
-## Working area and disconnect distance
+## Where it works
 
-The working area is the bounding box of the grid containing your selected inventory. It follows the grid as it moves, rotates, or changes size. Separate subgrids are not combined into one working area.
+The working area follows the bounds of the grid containing your selected inventory. Separate subgrids do not enlarge it.
 
-| Your position | Tether behavior |
+| Your position | What happens |
 | --- | --- |
-| Inside or on the grid's bounds | Transfers are enabled. |
-| Outside, up to 100 m beyond the bounds | Transfers pause; the tether stays connected. |
-| More than 100 m beyond the bounds | The tether disconnects. |
+| Inside the grid's bounds | Transfers work. |
+| Outside, up to 100 m beyond the bounds | Transfers pause. Returning inside resumes them. |
+| More than 100 m outside | The tether breaks. Use `/tether` to reconnect. |
 
-Distance is measured from your character to the nearest point on the box, not from the selected inventory or the grid's center. Returning inside resumes a paused tether automatically. After a break, use `/tether` to connect again.
+The preview shows the working area in green and a 100 m guide in orange. The orange box extends beyond the actual break distance at its corners. The preview hides 30 seconds after disconnection.
 
-## Ownership and enemy overlap
+Bounds previews require more than half of the grid's ownable blocks to belong to you or be explicitly shared with your faction. Unowned blocks count against that majority; armor without ownership does not count. The preview closes if access is lost.
 
-The selected inventory must be personally owned or explicitly shared with your faction by an owner in that faction. Normal inventory-access permissions must also allow access. Unowned blocks and another player's blocks set only to Share All are not eligible as tether targets. Admin access does not bypass these requirements.
+## Ownership and access
 
-Access to the tether target is checked during operation and before transfers. Losing permission disconnects the tether.
+Your selected inventory must be personally owned or explicitly faction-shared by a member of your faction. Unowned inventories, enemy inventories, and another player's inventories set only to **Share All** cannot be selected. Losing access disconnects the tether.
 
-**Welder sources follow vanilla conveyor access.** The ownership restriction above applies to the selected tether target, not every inventory supplying components. The build planner can withdraw from conveyor-connected inventories across connector-docked grids when normal game access and conveyor rules allow it. These sources may include unowned inventories or another player's Share All inventories. This preserves the vanilla withdrawal behavior available at the inventory port. Grinder and drill deposits go to the selected inventory.
+Welder withdrawals follow the game's normal inventory permissions and conveyor rules, including across locked connectors. Tether does not grant access to locked cargo. Grinder and drill deposits go to the selected inventory.
 
-An enemy grid whose bounding box overlaps the tethered grid's bounding box breaks the tether and prevents reconnection while the overlap remains. Both boxes follow their grids' rotation and position. Nearby enemies outside the bounds do not block tethering. This also applies to overlapping mixed-ownership grids containing enemy-owned blocks, including the tethered grid itself. Enemy status follows the game's ownership and faction relations.
+An enemy grid overlapping the working bounds blocks tethering. Enemy-owned blocks on a mixed-ownership grid can also block it. Nearby enemies outside the bounds do not trigger this check.
 
-## Wireframe preview
+## Combat cooldown
 
-Use `/tether bounds` while looking at a grid. Targeting it with a hand tool works too; without a tool target, the preview can select a grid up to 500 m away.
+Tether disconnects and becomes unavailable for **two minutes after the latest qualifying ship damage, weapon fire, or electronic-warfare effect**. Activity on mechanical subgrids and connector-docked ships counts too. Your own handheld weapon fire also counts.
 
-- **Green:** the working area where transfers are enabled.
-- **Orange:** the 100 m break-range guide. The actual break boundary has rounded corners, so the wireframe box extends slightly beyond it at the corners.
+- Bumping or hurting your character does **not** start a cooldown.
+- Grinding your own blocks is allowed. Incoming damage while grinding still counts.
+- An isolated connector hit is tolerated. Repeated connector damage within one second, or outright block destruction, triggers the cooldown.
+- Ordinary docking and undocking do not count as combat.
+- Newly observed grids and WeaponCore weapons need a two-minute observation period. This includes joining or reconnecting, new grids, split fragments, and merge survivors.
 
-Both boxes adjust in real time as the grid moves, rotates, or changes size. Enabled bounds disappear 30 seconds after the tether disconnects. Use `/tether bounds off` to hide them immediately.
+Changing targets, undocking, respawning, or reconnecting does not clear an existing cooldown. Continued combat extends it. Use `/tether` to reconnect after the restriction clears.
 
-## Tool behavior
+Combat restrictions show **Tether unavailable.** Detailed reasons are kept in the game log. Enemy overlap and unavailable weapon observers can keep tethering blocked until those conditions clear.
 
-| Tool | Transfers |
-| --- | --- |
-| Welder | Pulls build-planner components using the game's inventory and conveyor workflow. |
-| Grinder | Sends carried ore, ingots, and components to the linked inventory. |
-| Drill | Sends carried ore to the linked inventory. |
+Combat detection supports vanilla weapons and WeaponCore, with EMP and jump-inhibition detection for WeaponCore and Vanilla+ when present. Tether observes information received by your client; it is not a server-enforced anti-cheat system.
 
-Grinder and drill transfers include matching items already in your inventory. Available space and the game's normal transfer checks still apply. The plugin does not change the game's global interaction distance.
+## Troubleshooting
 
-## Building locally
+If Tether will not connect:
 
-From the repository root, build the Legacy version with your game's Bin64 path:
+- Keep a tool equipped and aim directly at an inventory access port.
+- Check ownership and faction sharing, then check your distance from the grid.
+- Allow two quiet minutes after joining, encountering a new grid, or recent combat.
+- If it remains unavailable, include your game log when reporting the issue.
 
-```powershell
-dotnet build ClientPlugin/ClientPlugin.csproj -c Release -f net48 -p:Bin64="D:\SteamLibrary\steamapps\common\SpaceEngineers\Bin64" -p:RunPostBuildEvent=Never
-```
+Report bugs through [GitHub issues](https://github.com/Taeleus/TetherSE/issues). Include your Tether/Pulsar versions, server or modpack, and steps to reproduce the problem.
 
-The output is `ClientPlugin/bin/Release/net48/TetherSE.dll`. The project also contains a `net10.0` target; the current plugin descriptor selects the Legacy runtime using the CLR identifier.
-
-Automatic deployment is disabled by default. Local paths can be configured in the ignored `Directory.Build.props.user` file. `RunPostBuildEvent=Never` keeps deployment disabled even when a Pulsar path is configured.
-
-When using the separate TetherSEDev local build, enable it instead of the original TetherSE so only one version runs.
-
-## Reporting issues
-
-Open an [issue](https://github.com/Taeleus/TetherSE/issues) with your game and Pulsar versions, steps to reproduce, ownership/sharing setup, and any relevant game-log excerpt.
+See the [changelog](CHANGELOG.md) for version history, [release and local development instructions](RELEASING.md), and [validation checklist](tests/CombatLockout.Tests/README.md).

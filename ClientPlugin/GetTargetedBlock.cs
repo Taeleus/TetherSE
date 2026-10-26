@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using Sandbox.Game;
 using Sandbox.Game.Entities;
@@ -8,6 +9,7 @@ using VRage.Game.Components;
 using VRage.Game.Entity;
 using VRage.Game.Entity.UseObject;
 using VRage.Game.ModAPI;
+using VRage.Utils;
 using VRageMath;
 
 namespace TetherSE;
@@ -19,58 +21,94 @@ public static class GetTargetedBlock
         var previous = selectedBlock;
         selectedBlock = null;
         selectedObject = null;
-        if (previous != null && !previous.Closed && !previous.MarkedForClose && MySession.Static != null)
-            MyVisualScriptLogicProvider.SetHighlightLocal(previous.Name, -1, 0,
-                Color.White, MySession.Static.LocalPlayerId, null);
+        // A renderer/scenario failure must not interrupt disconnect or world cleanup.
+        try
+        {
+            if (previous != null && !previous.Closed && !previous.MarkedForClose && MySession.Static != null)
+                MyVisualScriptLogicProvider.SetHighlightLocal(previous.Name, -1, 0,
+                    Color.White, MySession.Static.LocalPlayerId, null);
+        }
+        catch (Exception exception)
+        {
+            MyLog.Default.WriteLineAndConsole("TetherSE highlight cleanup failed: " + exception);
+        }
     }
 
     public static void GetPort()
     {
         Tether.Disconnect();
-        var utils = MyAPIGateway.Utilities;
-        var character = MySession.Static?.LocalCharacter;
-        var caster = character?.EquippedTool?.Components?.Get<MyCasterComponent>();
-        var block = caster?.HitBlock;
-        if (block?.FatBlock is IMyTerminalBlock terminalBlock)
+        bool connected = false;
+        try
         {
-            if (!Tether.HasAccess(terminalBlock))
+            var utils = MyAPIGateway.Utilities;
+            CombatLockout.Update();
+            if (CombatLockout.IsBlocked)
             {
-                utils.ShowNotification("Tether requires your own inventory or an accessible faction-shared inventory.", 5000, "Red");
+                CombatLockout.ReportBlocked();
                 return;
             }
-            var grid = terminalBlock.CubeGrid as MyCubeGrid;
-            if (grid == null || TetherArea.DistanceOutside(grid, character.PositionComp.GetPosition()) > TetherArea.BreakDistance)
+            var character = MySession.Static?.LocalCharacter;
+            var caster = character?.EquippedTool?.Components?.Get<MyCasterComponent>();
+            var block = caster?.HitBlock;
+            if (block?.FatBlock is IMyTerminalBlock terminalBlock)
             {
-                utils.ShowNotification("Move within 100 m of the grid bounds to connect.", 4000, "White");
-                return;
-            }
-            if (!TetherArea.CheckEnemies(grid, out var reason))
-            {
-                utils.ShowNotification(reason, 5000, "Red");
-                return;
-            }
-            var objects = terminalBlock.Components.Get<MyUseObjectsComponentBase>();
-            var usableObjects = new List<IMyUseObject>();
-            objects?.GetInteractiveObjects(usableObjects);
-            foreach (var usableObject in usableObjects)
-            {
-                if (usableObject.PrimaryAction != UseActionEnum.OpenInventory) continue;
-                selectedBlock = terminalBlock;
-                selectedObject = usableObject;
-                // Preserve scenario/visual-script entity names.
-                if (string.IsNullOrEmpty(terminalBlock.Name))
+                if (!Tether.HasAccess(terminalBlock))
                 {
-                    terminalBlock.Name = terminalBlock.EntityId.ToString();
-                    MyEntities.SetEntityName((MyEntity)terminalBlock);
+                    utils.ShowNotification("Tether requires your own inventory or an accessible faction-shared inventory.", 5000, "Red");
+                    return;
                 }
-                MyVisualScriptLogicProvider.SetHighlightLocal(terminalBlock.Name, 2, 3,
-                    Color.ForestGreen, MySession.Static.LocalPlayerId, null);
-                Tether.Connected();
-                utils.ShowNotification($"Tethered to {terminalBlock.CustomName}", 4000, "White");
-                return;
+                var grid = terminalBlock.CubeGrid as MyCubeGrid;
+                if (grid == null || TetherArea.DistanceOutside(grid, character.PositionComp.GetPosition()) > TetherArea.BreakDistance)
+                {
+                    utils.ShowNotification("Move within 100 m of the grid bounds to connect.", 4000, "White");
+                    return;
+                }
+                var objects = terminalBlock.Components.Get<MyUseObjectsComponentBase>();
+                var usableObjects = new List<IMyUseObject>();
+                objects?.GetInteractiveObjects(usableObjects);
+                foreach (var usableObject in usableObjects)
+                {
+                    if (usableObject.PrimaryAction != UseActionEnum.OpenInventory) continue;
+                    if (!CombatLockout.CanConnect(grid))
+                    {
+                        CombatLockout.ReportBlocked();
+                        return;
+                    }
+                    // Only create scan caches once we have a usable inventory port.
+                    if (!TetherArea.CheckEnemies(grid, out var reason))
+                    {
+                        TetherDiagnostics.Show(reason);
+                        return;
+                    }
+                    selectedBlock = terminalBlock;
+                    selectedObject = usableObject;
+                    // Preserve scenario/visual-script entity names.
+                    if (string.IsNullOrEmpty(terminalBlock.Name))
+                    {
+                        terminalBlock.Name = terminalBlock.EntityId.ToString();
+                        MyEntities.SetEntityName((MyEntity)terminalBlock);
+                    }
+                    MyVisualScriptLogicProvider.SetHighlightLocal(terminalBlock.Name, 2, 3,
+                        Color.ForestGreen, MySession.Static.LocalPlayerId, null);
+                    Tether.Connected();
+                    connected = true;
+                    utils.ShowNotification($"Tethered to {terminalBlock.CustomName}", 4000, "White");
+                    return;
+                }
             }
+            utils?.ShowNotification("Target a block with an inventory access port while holding a tool.", 4000, "Red");
         }
-        utils?.ShowNotification("Target a block with an inventory access port while holding a tool.", 4000, "Red");
+        catch (Exception exception)
+        {
+            connected = false;
+            MyLog.Default.WriteLineAndConsole("TetherSE port selection failed: " + exception);
+            TetherDiagnostics.Show("Tether unavailable. See game log.");
+        }
+        finally
+        {
+            // Includes exceptions after a successful scan or partial selection.
+            if (!connected) Tether.Disconnect();
+        }
     }
 
     public static IMyUseObject selectedObject;

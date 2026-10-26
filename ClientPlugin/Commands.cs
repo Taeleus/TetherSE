@@ -11,6 +11,7 @@ public class Commands : MySessionComponentBase
     {
         Tether.Disconnect();
         BoundsPreview.Clear();
+        CombatLockout.Start();
         MyAPIUtilities.Static.MessageEntered += Command;
     }
 
@@ -19,6 +20,7 @@ public class Commands : MySessionComponentBase
         MyAPIUtilities.Static.MessageEntered -= Command;
         Tether.Disconnect();
         BoundsPreview.Clear();
+        CombatLockout.Clear();
         base.UnloadData();
     }
 
