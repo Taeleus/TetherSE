@@ -25,7 +25,7 @@
   </SourceDirectories>
 
   <!-- The current plugin version's commit hash -->
-  <Commit>4ee11d3971c3e93dd79e76b4cf8b952de6dc8346</Commit>
+  <Commit>1ac30a6d49b69992b5383159f0b5119a094614b2</Commit>
   <NuGetReferences>
     <PackageReference Include="Lib.Harmony" Version="2.4.2" />
   </NuGetReferences>
