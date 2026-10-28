@@ -7,6 +7,12 @@ local prerelease snapshots; published releases have their own dated section.
 
 No changes yet.
 
+## 1.1.1 — 2026-10-28
+
+### Fixed
+- Reduced memory allocations while monitoring idle weapons. Combat detection,
+  single-shot tracking and the two-minute cooldown remain unchanged.
+
 ## 1.1.0 — 2026-10-26
 
 ### Added
