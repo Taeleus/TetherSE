@@ -1,14 +1,19 @@
 # Combat lockout validation
 
-Release: **1.1.0**, two-minute cooldowns and observation waits. Player feedback
+Release: **1.1.1**, two-minute cooldowns and observation waits. Player feedback
 is the generic `Tether unavailable.` HUD notice, with no debug chat. Detailed
 reasons remain in the game log.
 
-Release verification (2026-10-26): both runtime builds and 268 regression
+1.1.0 verification (2026-10-26): both runtime builds and 268 regression
 assertions pass. The installed Pulsar source compiler builds all 18 plugin
 files. The maintainer confirmed the final gameplay checklist passed, including
 combat/destruction, quiet connector/rotor behavior, vanilla framework absence,
 and reconnect/world-switch checks using the source-compiled release candidate.
+
+1.1.1 verification (2026-10-28): both runtime builds and all 268 assertions
+pass, and the installed Pulsar compiler builds all 18 source files. This patch
+only defers idle-weapon diagnostic text; the gameplay checklist above was
+completed for 1.1.0.
 
 Sections below labeled dev.7, dev.8 or dev.9 record historical debugging tests.
 Use the current two-minute duration when repeating them.

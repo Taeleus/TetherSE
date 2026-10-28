@@ -536,7 +536,9 @@ internal static class CombatLockout
             foreach (var entry in weapons)
             {
                 if (entry.Key.Closed || entry.Key.MarkedForClose) continue;
-                Record(entry.Value.Poll(), "Vanilla weapon fire; " + DescribeGrid(grid) + "; " + DescribeBlock(entry.Key));
+                var deadline = entry.Value.Poll();
+                if (deadline > 0)
+                    Record(deadline, "Vanilla weapon fire; " + DescribeGrid(grid) + "; " + DescribeBlock(entry.Key));
             }
         }
 
