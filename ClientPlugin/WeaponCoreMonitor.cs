@@ -39,6 +39,10 @@ internal sealed class WeaponCoreMonitor : IDisposable
     public bool Failed { get; private set; }
     public string FailureReason { get; private set; }
 
+    // GetCoreWeapons supplies the definitions to which the provider attaches
+    // cores (including support/upgrade blocks). Do not probe unrelated blocks.
+    public bool IsCandidate(MyDefinitionId definition) => Ready && definitions.Contains(definition);
+
     public WeaponCoreMonitor(Action<object, float> onDamage) { this.onDamage = onDamage; }
 
     public void Start(bool expected)
@@ -181,6 +185,7 @@ internal sealed class WeaponCoreMonitor : IDisposable
         private readonly MyDefinitionId? definition;
         private readonly Action<string> activity;
         private readonly Dictionary<int, Part> parts = new Dictionary<int, Part>();
+        private readonly Dictionary<string, int> map = new Dictionary<string, int>();
         private bool identified;
         private bool disposed;
         private bool logged;
@@ -210,7 +215,10 @@ internal sealed class WeaponCoreMonitor : IDisposable
                     }
                     Uncertain = true;
                     UnavailableReason = "WeaponCore weapon parts not initialized";
-                    var map = new Dictionary<string, int>();
+                    // Reuse the scratch map while a component/part is loading.
+                    // Empty maps must remain retryable; they are not proof that
+                    // a candidate can never become an initialized weapon.
+                    map.Clear();
                     if (entity is IMyTerminalBlock terminal)
                     {
                         if (!api.getMap(terminal, map) || map.Count == 0)

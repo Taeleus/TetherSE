@@ -18,6 +18,7 @@ namespace TetherSE;
 // discard that history. Only the selected mechanical/logical construct affects the lockout.
 internal static class CombatLockout
 {
+    private static bool pollingEffects;
     public const int CooldownSeconds = 120;
     private static readonly CombatCooldown cooldown = new CombatCooldown(CooldownSeconds * Stopwatch.Frequency);
     private static readonly Dictionary<MyCubeGrid, GridActivity> grids = new Dictionary<MyCubeGrid, GridActivity>();
@@ -166,7 +167,9 @@ internal static class CombatLockout
         try
         {
             weaponCore.Update();
-            effects.Update(weaponCore.Ready ? weaponCore.ProviderAssembly : null);
+            pollingEffects = true;
+            try { effects.Update(weaponCore.Ready ? weaponCore.ProviderAssembly : null); }
+            finally { pollingEffects = false; }
             var character = MySession.Static?.LocalCharacter;
             // MyGunBase excludes engineer tools and drills, which also expose
             // IsShooting but must not count as weapon fire.
@@ -289,7 +292,11 @@ internal static class CombatLockout
         if (!started) return;
         var grid = (target as MySlimBlock)?.CubeGrid ?? (target as MyCubeBlock)?.CubeGrid ?? target as MyCubeGrid;
         if (grid != null && grids.TryGetValue(grid, out var activity))
-            activity.Record(Stopwatch.GetTimestamp() + CooldownSeconds * Stopwatch.Frequency, "EMP/jump-inhibition effect; " + DescribeGrid(grid) + "; " + DescribeBlock(target as MyCubeBlock ?? (target as MySlimBlock)?.FatBlock));
+        {
+            var deadline = Stopwatch.GetTimestamp() + CooldownSeconds * Stopwatch.Frequency;
+            if (deadline > activity.Until)
+                activity.Record(deadline, "EMP/jump-inhibition effect; " + DescribeGrid(grid) + "; " + DescribeBlock(target as MyCubeBlock ?? (target as MySlimBlock)?.FatBlock), !pollingEffects);
+        }
     }
 
     internal static void OwnBlockDismantled(MySlimBlock block)
@@ -374,6 +381,8 @@ internal static class CombatLockout
         private int lastConnectorIntegrityFrame;
         private readonly Dictionary<MyCubeBlock, WeaponActivity> weapons = new Dictionary<MyCubeBlock, WeaponActivity>();
         private readonly Dictionary<MyCubeBlock, WeaponCoreMonitor.Weapon> coreWeapons = new Dictionary<MyCubeBlock, WeaponCoreMonitor.Weapon>();
+        private readonly HashSet<MyCubeBlock> functionalBlocks = new HashSet<MyCubeBlock>();
+        private bool coreDiscovered;
         public bool Uncertain
         {
             get
@@ -424,7 +433,7 @@ internal static class CombatLockout
         {
             // Called only for an observed EMP detonation/beam endpoint. Check
             // actual functional block bounds, never enemy proximity/radar.
-            foreach (var block in coreWeapons.Keys)
+            foreach (var block in functionalBlocks)
                 if (block is IMyFunctionalBlock && !block.Closed && !block.MarkedForClose &&
                     block.PositionComp.WorldAABB.Distance(position) <= radius)
                 {
@@ -433,10 +442,13 @@ internal static class CombatLockout
                 }
         }
 
-        public void Record(long deadline, string reason = null)
+        public void Record(long deadline, string reason = null, bool refreshGroup = true)
         {
             if (deadline <= 0) return;
             if (deadline > Until) { Until = deadline; Reason = reason ?? "Grid activity; " + DescribeGrid(grid); }
+            // Polled EWAR is batched; Update refreshes the construct after all
+            // grids have recorded their history. Event callbacks stay immediate.
+            if (!refreshGroup) return;
             // Damage/effect callbacks can arrive between plugin updates.
             // Resolve the current connector/mechanical construct at the event.
             try
@@ -501,7 +513,13 @@ internal static class CombatLockout
         {
             if (block == null || block.CubeGrid != grid) return;
             if (block is IMyGunObject<MyGunBase> gun) weapons[block] = new WeaponActivity(gun);
-            if (!coreWeapons.ContainsKey(block))
+            if (block is IMyFunctionalBlock) functionalBlocks.Add(block);
+            WatchCore(block);
+        }
+
+        private void WatchCore(MyCubeBlock block)
+        {
+            if (weaponCore.IsCandidate(block.BlockDefinition.Id) && !coreWeapons.ContainsKey(block))
                 coreWeapons.Add(block, weaponCore.Watch(block, block.BlockDefinition.Id,
                     reason => Record(Stopwatch.GetTimestamp() + CooldownSeconds * Stopwatch.Frequency, reason + "; " + DescribeGrid(grid) + "; " + DescribeBlock(block))));
         }
@@ -520,6 +538,7 @@ internal static class CombatLockout
             finally
             {
                 weapons.Remove(block);
+                functionalBlocks.Remove(block);
                 if (coreWeapons.TryGetValue(block, out var weapon))
                 {
                     coreWeapons.Remove(block);
@@ -531,6 +550,13 @@ internal static class CombatLockout
         public void PollWeapons()
         {
             if (grid.Closed || grid.MarkedForClose) return;
+            if (weaponCore.Ready && !coreDiscovered)
+            {
+                // One discovery pass when the optional API becomes ready.
+                // Later blocks are classified by Added, never by a world scan.
+                foreach (var block in grid.GetFatBlocks()) WatchCore(block);
+                coreDiscovered = true;
+            }
             foreach (var entry in coreWeapons)
                 if (!entry.Key.Closed && !entry.Key.MarkedForClose) entry.Value.Poll();
             foreach (var entry in weapons)
@@ -553,6 +579,7 @@ internal static class CombatLockout
             weapons.Clear();
             foreach (var weapon in coreWeapons.Values) weapon.Dispose();
             coreWeapons.Clear();
+            functionalBlocks.Clear();
             OwnDismantled.Clear();
         }
     }

@@ -330,6 +330,7 @@ internal static class Program
 
         Sdx2Tests();
         EffectTests();
+        PollingOptimizationTests();
         CombatLockout.Clear();
         OwnGrindingPatches.Dispose();
         Console.WriteLine($"PASS: {assertions} combat-lockout assertions (production sources and real Harmony patches with game API doubles).");
@@ -448,6 +449,98 @@ internal static class Program
         var invalid = new Dictionary<string, Delegate> { ["GetCoreWeapons"] = new Action(() => { }) };
         MyAPIGateway.Utilities.Broadcast(invalid);
         Check(CombatLockout.IsBlocked, "incompatible WC API fails closed");
+    }
+
+    private static int CoreWatcherCount()
+    {
+        var dictionary = (System.Collections.IDictionary)typeof(CombatLockout).GetField("grids", BindingFlags.NonPublic | BindingFlags.Static).GetValue(null);
+        int count = 0;
+        foreach (var activity in dictionary.Values)
+            count += ((System.Collections.IDictionary)activity.GetType().GetField("coreWeapons", BindingFlags.NonPublic | BindingFlags.Instance).GetValue(activity)).Count;
+        return count;
+    }
+
+    private static void PollingOptimizationTests()
+    {
+        var grid = World();
+        for (int i = 0; i < 5000; i++) grid.Add(new FunctionalBlock());
+        StartObserved();
+        Check(CoreWatcherCount() == 0, "polling: vanilla worlds create no WC block watchers");
+        var wc = new FakeWeaponCore();
+        var gun = new CoreGun(); grid.Add(gun); wc.Add(gun, 0);
+        var remote = new MyCubeGrid(); var remoteGun = new CoreGun(); remote.Add(remoteGun); wc.Add(remoteGun, 3); MyEntities.Add(remote);
+        Check(CoreWatcherCount() == 0, "polling: blocks added before the API create no WC watchers");
+        wc.Respond(); CombatLockout.Update();
+        Check(CoreWatcherCount() == 2 && wc.ObserverCount == 2, "polling: late API discovers weapons on selected and unselected grids");
+        Check(wc.HasCalls == 2 && wc.MapCalls == 2, "polling: 5000 ordinary functional blocks never query WC components or maps");
+        ExpireObservedCombat(); CombatLockout.CanConnect(grid);
+        int hasCalls = wc.HasCalls, mapCalls = wc.MapCalls, shotCalls = wc.ShotCalls;
+        for (int i = 0; i < 20; i++) CombatLockout.Update();
+        Check(wc.HasCalls == hasCalls && wc.MapCalls == mapCalls, "polling: steady-state ordinary blocks and initialized guns need no classification probes");
+        Check(wc.ShotCalls == shotCalls + 40, "polling: both real weapons still check shot counters every update without a selected remote tether");
+        wc.State(remoteGun, 3).Shots++; CombatLockout.Update();
+        Check(!CombatLockout.IsBlocked, "polling: remote gunfire is not a nearby-enemy signal");
+        Check(!CombatLockout.CanConnect(remote), "polling: remote single-shot history survives switching targets");
+        ExpireObservedCombat(); CombatLockout.CanConnect(grid);
+        var added = new CoreGun(); wc.Add(added, 7); grid.Add(added); CombatLockout.Update();
+        Check(CoreWatcherCount() == 3 && wc.ObserverCount == 3 && CombatLockout.IsBlocked, "polling: post-API block additions start weapon observation immediately");
+        ExpireObservedCombat(); wc.Event(added, 7, 8, true);
+        Check(CombatLockout.IsBlocked, "polling: newly added WC weapon charging callback remains immediate");
+        grid.Remove(added);
+        Check(CoreWatcherCount() == 2 && wc.ObserverCount == 2, "polling: filtered watcher removal still detaches callbacks");
+        CombatLockout.Clear();
+        Check(wc.ObserverCount == 0, "polling: filtered world teardown detaches all observers");
+
+        grid = World(); wc = new FakeWeaponCore { MapUnavailable = true }; wc.RespondOnRequest();
+        gun = new CoreGun(); grid.Add(gun); wc.Add(gun, 0); StartObserved(); CombatLockout.CanConnect(grid);
+        for (int i = 0; i < 20; i++) CombatLockout.Update();
+        Check(CombatLockout.IsBlocked && wc.MapInstances.Count == 1, "polling: pending maps reuse scratch storage and stay fail-closed");
+        wc.MapUnavailable = false; CombatLockout.Update();
+        Check(wc.ObserverCount == 1 && CombatLockout.IsBlocked, "polling: late map initialization registers observers and starts quiet grace");
+        ExpireObservedCombat();
+        Check(CombatLockout.CanConnect(grid), "polling: initialized late-map weapon recovers normally");
+
+        grid = World(); wc = new FakeWeaponCore(); wc.RespondOnRequest();
+        var support = new CoreGun(); support.BlockDefinition.Id = new VRage.Game.MyDefinitionId("CoreSupport");
+        wc.ExtraDefinitions.Add(support.BlockDefinition.Id); wc.Add(support, 0); wc.SupportEntities.Add(support); grid.Add(support);
+        StartObserved(); CombatLockout.CanConnect(grid);
+        for (int i = 0; i < 20; i++) CombatLockout.Update();
+        Check(wc.MapInstances.Count == 1 && wc.ObserverCount == 0, "polling: support/upgrade candidates do not allocate maps on each retry");
+        Check(CombatLockout.IsBlocked, "polling: ambiguous definition-listed candidates retain conservative blocking");
+
+        grid = EffectWorld(false); wc = new FakeWeaponCore(); wc.RespondOnRequest();
+        for (int i = 0; i < 500; i++)
+        {
+            var block = new FunctionalBlock(); grid.Add(block);
+            CoreSystems.Session.I.ActiveEwarCubes[block.EntityId] = new object();
+            CoreSystems.Session.I.EffectedCubes[block.EntityId] = new object();
+        }
+        StartObserved(); ExpireObservedCombat(); CombatLockout.CanConnect(grid);
+        int groupCalls = MyAPIGateway.GridGroups.Calls;
+        CombatLockout.Update();
+        Check(CombatLockout.IsBlocked, "polling: EWAR on non-weapon blocks still blocks tether");
+        Check(MyAPIGateway.GridGroups.Calls == groupCalls + 2, "polling: 1000 EWAR entries perform one mechanical/logical construct refresh per update");
+        long previous = Deadline(); CombatLockout.Update();
+        Check(Deadline() > previous, "polling: continuing batched EWAR extends the cooldown every update");
+        var other = new MyCubeGrid(); var otherBlock = new FunctionalBlock(); other.Add(otherBlock); MyEntities.Add(other);
+        CoreSystems.Session.I.ActiveEwarCubes.Clear(); CoreSystems.Session.I.EffectedCubes.Clear(); ExpireObservedCombat();
+        CoreSystems.Session.I.ActiveEwarCubes[otherBlock.EntityId] = new object(); CombatLockout.Update();
+        Check(!CombatLockout.IsBlocked, "polling: remote EWAR does not alert the selected grid");
+        CoreSystems.Session.I.ActiveEwarCubes.Clear();
+        Check(!CombatLockout.CanConnect(other), "polling: remote batched EWAR history prevents switching-target bypass");
+        CoreSystems.Session.I.ActiveEwarCubes.Clear(); ExpireObservedCombat();
+        Check(CombatLockout.CanConnect(other), "polling: cleared EWAR releases after cooldown");
+        CombatLockout.Clear();
+
+        // EMP pulse coverage must not depend on WC watcher membership.
+        grid = EffectWorld(); var functional = new FunctionalBlock(); grid.Add(functional); StartObserved(); CombatLockout.CanConnect(grid);
+        Check(CoreWatcherCount() == 0, "polling: Vanilla+ ordinary functional block needs no WC watcher");
+        var missile = new VanillaPlusFramework.Missiles.VPFMissile(default, new VanillaPlusFramework.Utilities.EmpStats());
+        missile.Close(); Check(CombatLockout.IsBlocked, "polling: EMP pulse on a non-weapon functional block still blocks");
+        ExpireObservedCombat(); grid.Remove(functional); ExpireObservedCombat();
+        missile = new VanillaPlusFramework.Missiles.VPFMissile(default, new VanillaPlusFramework.Utilities.EmpStats());
+        missile.Close(); Check(!CombatLockout.IsBlocked, "polling: removed functional blocks leave no stale EMP coverage");
+        CombatLockout.Clear();
     }
 
     private static MyCubeGrid EffectWorld(bool plus = true)

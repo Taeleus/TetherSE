@@ -7,6 +7,19 @@ local prerelease snapshots; published releases have their own dated section.
 
 No changes yet.
 
+## 1.1.2 — 2026-10-28
+
+### Improved
+- Reduced background combat-monitor overhead by excluding ordinary blocks from
+  WeaponCore polling and reusing storage during weapon initialization.
+- Combined repeated electronic-warfare reports for the same grid. Weapon fire,
+  damage, EMP/jump-inhibition detection and the two-minute cooldown remain intact,
+  including activity before tethering and on docked ships or subgrids.
+
+### Validation
+- Both runtime builds and 294 regression assertions pass, including large-grid
+  filtering, late weapon initialization, non-weapon EMP hits and combat history.
+
 ## 1.1.1 — 2026-10-28
 
 ### Fixed
