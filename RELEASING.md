@@ -6,9 +6,9 @@ Edit `ClientPlugin/BuildVersion.cs`. Both local builds and Pulsar's source compi
 use its assembly attributes. `Version.Build.props` reads the Version constant for
 MSBuild; no project-file version needs to be kept in sync manually.
 
-- `Version`: the full public version, currently `1.1.1`.
+- `Version`: the full public version, currently `1.1.2`.
 - `AssemblyVersion` and `AssemblyFileVersion`: four numeric parts, currently
-  `1.1.1.0`. Keep these aligned with the public version's numeric portion.
+  `1.1.2.0`. Keep these aligned with the public version's numeric portion.
 - `AssemblyInformationalVersion`: uses the full Version constant, including the
   prerelease label. Windows DLL details expose it as the product version.
 

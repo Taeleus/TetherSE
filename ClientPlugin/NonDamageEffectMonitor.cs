@@ -41,6 +41,7 @@ internal sealed class NonDamageEffectMonitor : IDisposable
     private string failureReason;
     private bool disposed;
     private int discoveryTicks;
+    private readonly Dictionary<MyCubeGrid, MyEntity> affectedGrids = new Dictionary<MyCubeGrid, MyEntity>();
 
     public string BlockingReason => failed ? "EMP/jump-inhibition observer failed: " + failureReason :
         weaponCoreInstalled && !coreReady ? "WeaponCore EMP/jump-inhibition observer not initialized" :
@@ -89,8 +90,12 @@ internal sealed class NonDamageEffectMonitor : IDisposable
                 if (session == null) throw new InvalidOperationException("Vanilla+ effect session unavailable.");
                 ObserveIds(plusDisabledBlocks.GetValue(session) as IDictionary);
             }
+            // A grid needs one deadline update, even if hundreds of its blocks
+            // appear in both client and server effect collections.
+            foreach (var entity in affectedGrids.Values) hit(entity);
         }
         catch (Exception exception) { Fail(exception); }
+        finally { affectedGrids.Clear(); }
     }
 
     private void BindCore(Assembly assembly)
@@ -169,7 +174,9 @@ internal sealed class NonDamageEffectMonitor : IDisposable
         foreach (var key in effects.Keys)
         {
             var entity = MyEntities.GetEntityById((long)key);
-            if (entity != null && !entity.Closed && !entity.MarkedForClose) hit(entity);
+            if (entity == null || entity.Closed || entity.MarkedForClose) continue;
+            var grid = (entity as MyCubeBlock)?.CubeGrid ?? entity as MyCubeGrid;
+            if (grid != null && !affectedGrids.ContainsKey(grid)) affectedGrids.Add(grid, entity);
         }
     }
 
@@ -312,6 +319,7 @@ internal sealed class NonDamageEffectMonitor : IDisposable
     {
         if (disposed) return;
         disposed = true;
+        affectedGrids.Clear();
         if (active == this) active = null;
         try { harmony?.UnpatchAll(HarmonyId); }
         catch (Exception exception) { MyLog.Default.WriteLineAndConsole("TetherSE effect observer cleanup: " + exception.Message); }

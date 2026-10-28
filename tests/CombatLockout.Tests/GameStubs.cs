@@ -293,6 +293,7 @@ namespace Sandbox.ModAPI
     public class GridGroups
     {
         public bool Throw;
+        public int Calls;
         public Dictionary<IMyCubeGrid, List<IMyCubeGrid>> Groups = new Dictionary<IMyCubeGrid, List<IMyCubeGrid>>();
         public Dictionary<IMyCubeGrid, List<IMyCubeGrid>> LogicalGroups = new Dictionary<IMyCubeGrid, List<IMyCubeGrid>>();
         public bool HasConnection(IMyCubeGrid first, IMyCubeGrid second, GridLinkTypeEnum type)
@@ -301,6 +302,7 @@ namespace Sandbox.ModAPI
         }
         public void GetGroup(IMyCubeGrid anchor, GridLinkTypeEnum type, ICollection<IMyCubeGrid> result)
         {
+            Calls++;
             if (Throw) throw new InvalidOperationException("Simulated group lookup failure");
             var groups = type == GridLinkTypeEnum.Logical ? LogicalGroups : Groups;
             if (groups.TryGetValue(anchor, out var members)) foreach (var member in members) result.Add(member);

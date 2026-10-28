@@ -1,6 +1,6 @@
 # Combat lockout validation
 
-Release: **1.1.1**, two-minute cooldowns and observation waits. Player feedback
+Release: **1.1.2**, two-minute cooldowns and observation waits. Player feedback
 is the generic `Tether unavailable.` HUD notice, with no debug chat. Detailed
 reasons remain in the game log.
 
@@ -14,6 +14,15 @@ and reconnect/world-switch checks using the source-compiled release candidate.
 pass, and the installed Pulsar compiler builds all 18 source files. This patch
 only defers idle-weapon diagnostic text; the gameplay checklist above was
 completed for 1.1.0.
+
+1.1.2 verification (2026-10-28): both runtime builds and all 294 assertions
+pass. A 5,000-block fixture creates no ordinary-block WC watchers or component/
+map queries; actual weapons retain per-update shot-counter polling. A 1,000-entry
+EWAR fixture needs one construct refresh per update. Coverage includes late API/
+component/map initialization, support-candidate map reuse, observer removal,
+remote combat history, and EMP on non-weapon functional blocks. These are
+automated source/double checks, not an in-game frame-time measurement. The final
+gameplay checklist was completed for 1.1.0.
 
 Sections below labeled dev.7, dev.8 or dev.9 record historical debugging tests.
 Use the current two-minute duration when repeating them.

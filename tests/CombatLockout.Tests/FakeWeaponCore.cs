@@ -32,6 +32,10 @@ internal sealed class FakeWeaponCore
     private Action<DamageBatch> damage;
     public bool ThrowPolling;
     public bool ThrowCleanup;
+    public int HasCalls, MapCalls, ShotCalls;
+    public bool MapUnavailable;
+    public readonly HashSet<MyDefinitionId> ExtraDefinitions = new HashSet<MyDefinitionId>();
+    public readonly HashSet<object> MapInstances = new HashSet<object>();
     public readonly HashSet<MyEntity> SupportEntities = new HashSet<MyEntity>();
     public int ObserverCount => weapons.Values.Sum(parts => parts.Values.Sum(p => p.Observers.Count));
     public bool DamageRegistered => damage != null;
@@ -46,10 +50,17 @@ internal sealed class FakeWeaponCore
     {
         var methods = new Dictionary<string, Delegate>
         {
-            ["GetCoreWeapons"] = new Action<ICollection<MyDefinitionId>>(defs => defs.Add(new MyDefinitionId("CoreGun"))),
-            ["HasCoreWeaponBase"] = new Func<MyEntity, bool>(entity => weapons.ContainsKey(entity)),
+            ["GetCoreWeapons"] = new Action<ICollection<MyDefinitionId>>(defs =>
+            {
+                defs.Add(new MyDefinitionId("CoreGun"));
+                foreach (var definition in ExtraDefinitions) defs.Add(definition);
+            }),
+            ["HasCoreWeaponBase"] = new Func<MyEntity, bool>(entity => { HasCalls++; return weapons.ContainsKey(entity); }),
             ["GetBlockWeaponMap"] = new Func<IMyTerminalBlock, IDictionary<string, int>, bool>((entity, map) =>
             {
+                MapCalls++;
+                MapInstances.Add(map);
+                if (MapUnavailable) return false;
                 if (SupportEntities.Contains((MyEntity)entity) || !weapons.TryGetValue((MyEntity)entity, out var parts)) return false;
                 foreach (var id in parts.Keys) map.Add("Part" + id, id);
                 return true;
@@ -59,7 +70,7 @@ internal sealed class FakeWeaponCore
                 if (ThrowPolling) throw new InvalidOperationException("API temporarily unavailable");
                 return State(entity, id).Shooting;
             }),
-            ["GetShotsFiredBase"] = new Func<MyEntity, int, int>((entity, id) => State(entity, id).Shots),
+            ["GetShotsFiredBase"] = new Func<MyEntity, int, int>((entity, id) => { ShotCalls++; return State(entity, id).Shots; }),
             ["RegisterEventMonitor"] = new Action<MyEntity, int, Action<int, bool>>((entity, id, callback) => State(entity, id).Observers.Add(callback)),
             ["UnRegisterEventMonitor"] = new Action<MyEntity, int, Action<int, bool>>((entity, id, callback) =>
             {
